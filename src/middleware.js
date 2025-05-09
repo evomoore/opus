@@ -18,7 +18,7 @@ export function middleware(request) {
       frame-ancestors 'none';
       block-all-mixed-content;
       upgrade-insecure-requests;
-      connect-src 'self' https://snackmachine.onrender.com https://snackmachine-staging.onrender.com;
+      connect-src 'self' https://snackmachine.onrender.com https://snackmachine-staging.onrender.com https://api.cloudinary.com;
     `.replace(/\s+/g, ' ').trim()
   );
 

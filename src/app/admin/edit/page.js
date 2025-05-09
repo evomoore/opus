@@ -7,7 +7,6 @@ import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { upload } from '@vercel/blob/client';
 
 // Ensure the API URL is properly constructed
 const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
@@ -164,19 +163,46 @@ function EditArticleContent() {
     }
   };
 
-  const handleImageUpload = async (e) => {
+  const handleCloudinaryUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
     setUploadError(null);
     try {
-      const { url } = await upload(file.name, file, {
-        access: 'public',
-        handleUploadUrl: '/api/blob-upload',
+      const timestamp = Math.floor(Date.now() / 1000);
+      const paramsToSign = {
+        timestamp,
+        folder: 'featured-images', // Optional: change or remove as needed
+      };
+      // Get signature from API
+      const res = await fetch('/api/cloudinary-sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paramsToSign }),
       });
-      setFeaturedImage(url);
+      const { signature } = await res.json();
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY);
+      formData.append('timestamp', timestamp);
+      formData.append('signature', signature);
+      formData.append('folder', 'featured-images');
+      formData.append('upload_preset', ''); // Optional: if you use unsigned uploads
+      // Upload to Cloudinary
+      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+      });
+      const uploadData = await uploadRes.json();
+      if (uploadData.secure_url) {
+        setFeaturedImage(uploadData.secure_url);
+      } else {
+        throw new Error('Upload failed');
+      }
     } catch (err) {
-      console.error('Image upload failed:', err);
       setUploadError(err.message || 'Image upload failed. Please try again.');
     } finally {
       setUploading(false);
@@ -287,7 +313,7 @@ function EditArticleContent() {
             <input
               type="file"
               accept="image/*"
-              onChange={handleImageUpload}
+              onChange={handleCloudinaryUpload}
               className="block mb-2"
               aria-label="Upload featured image"
             />
