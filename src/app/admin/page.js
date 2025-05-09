@@ -5,13 +5,13 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 // Ensure the API URL is properly constructed
 const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
 
-export default function Admin() {
+function AdminContent() {
   const searchParams = useSearchParams();
   const slug = searchParams.get('slug');
   
@@ -342,5 +342,13 @@ export default function Admin() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function Admin() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AdminContent />
+    </Suspense>
   );
 } 

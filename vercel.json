@@ -1,0 +1,17 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "staging": true
+    }
+  },
+  "env": {
+    "NEXT_PUBLIC_ARTICLES_API_URL": "https://snackmachine.onrender.com/api"
+  },
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "staging": true
+    }
+  }
+} 
