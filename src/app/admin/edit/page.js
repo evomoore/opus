@@ -7,6 +7,7 @@ import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { upload } from '@vercel/blob/client';
 
 // Ensure the API URL is properly constructed
 const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
@@ -26,6 +27,8 @@ function EditArticleContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
 
   const editor = useEditor({
     extensions: [
@@ -161,6 +164,25 @@ function EditArticleContent() {
     }
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const { url } = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/blob-upload',
+      });
+      setFeaturedImage(url);
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      setUploadError(err.message || 'Image upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -259,9 +281,25 @@ function EditArticleContent() {
               type="url"
               value={featuredImage || ''}
               onChange={(e) => setFeaturedImage(e.target.value)}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded mb-2"
               placeholder="https://example.com/image.jpg"
             />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="block mb-2"
+              aria-label="Upload featured image"
+            />
+            {uploading && <div className="text-blue-500 text-sm mb-2">Uploading image...</div>}
+            {uploadError && <div className="text-red-500 text-sm mb-2">{uploadError}</div>}
+            {featuredImage && (
+              <img
+                src={featuredImage}
+                alt="Featured Preview"
+                className="w-full max-w-xs rounded shadow mb-2"
+              />
+            )}
           </div>
         </div>
 
