@@ -1,0 +1,14 @@
+.prose p {
+  margin-bottom: 2rem;
+}
+
+.prose ul,
+.prose ol {
+  margin-bottom: 2rem;
+  padding-left: 2rem;
+}
+
+.prose li {
+  margin-bottom: 0.5rem;
+  list-style-type: disc;
+} 
