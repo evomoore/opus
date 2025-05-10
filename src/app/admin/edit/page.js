@@ -8,6 +8,17 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
 import { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import '../../post/[slug]/post-content.css';
+import { Extension } from '@tiptap/core';
+import ListItem from '@tiptap/extension-list-item';
+
+// Sanitize function to remove <p> tags directly inside <ul> or <ol>
+function sanitizeListParagraphs(html) {
+  return html.replace(/<(ul|ol)>([\s\S]*?)<\/\1>/g, (match, tag, inner) => {
+    // Remove <p> tags directly inside <ul> or <ol>
+    return `<${tag}>${inner.replace(/<p>([\s\S]*?)<\/p>/g, '$1')}</${tag}>`;
+  });
+}
 
 // Ensure the API URL is properly constructed
 const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
@@ -20,9 +31,11 @@ function EditArticleContent() {
   const [subtitle, setSubtitle] = useState('');
   const [author, setAuthor] = useState('');
   const [publicationDate, setPublicationDate] = useState('');
-  const [originalPublication, setOriginalPublication] = useState('');
   const [tags, setTags] = useState('');
-  const [categories, setCategories] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(null);
   const [featuredImage, setFeaturedImage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -30,6 +43,11 @@ function EditArticleContent() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [createCategoryError, setCreateCategoryError] = useState(null);
+  const [isHtmlMode, setIsHtmlMode] = useState(false);
+  const [rawHtml, setRawHtml] = useState('');
 
   const editor = useEditor({
     extensions: [
@@ -82,9 +100,12 @@ function EditArticleContent() {
         // Format the publication date for the input field
         const pubDate = article.meta?.publication_date;
         setPublicationDate(pubDate ? new Date(pubDate).toISOString().split('T')[0] : '');
-        setOriginalPublication(article.meta?.original_publication ?? '');
         setTags(Array.isArray(article.tags) ? article.tags.join(', ') : '');
-        setCategories(Array.isArray(article.categories) ? article.categories.join(', ') : '');
+        setSelectedCategory(
+          Array.isArray(article.categories) && article.categories[0]
+            ? article.categories[0].slug || article.categories[0]
+            : ''
+        );
         setFeaturedImage(article.media?.featured_image?.url ?? null);
         
         // Set editor content
@@ -102,6 +123,37 @@ function EditArticleContent() {
     fetchArticle();
   }, [slug, editor]);
 
+  useEffect(() => {
+    // Fetch categories for dropdown
+    const fetchCategories = async () => {
+      setCategoriesLoading(true);
+      setCategoriesError(null);
+      try {
+        const res = await fetch(`${API_BASE_URL}/categories`);
+        if (!res.ok) throw new Error('Failed to fetch categories');
+        const data = await res.json();
+        setCategories(Array.isArray(data) ? data : data.categories || []);
+      } catch (err) {
+        setCategoriesError('Could not load categories');
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // Sync editor content to rawHtml when switching to HTML mode
+  useEffect(() => {
+    if (isHtmlMode && editor) {
+      setRawHtml(sanitizeListParagraphs(editor.getHTML()));
+    }
+    // When switching back to WYSIWYG, update editor content
+    if (!isHtmlMode && editor && rawHtml !== editor.getHTML()) {
+      editor.commands.setContent(sanitizeListParagraphs(rawHtml));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHtmlMode]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -114,11 +166,10 @@ function EditArticleContent() {
           slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
           meta: {
             publication_date: publicationDate,
-            original_publication: originalPublication,
             author,
             status: 'published'
           },
-          content: editor.getHTML(),
+          content: sanitizeListParagraphs(editor.getHTML()),
           media: {
             featured_image: featuredImage ? {
               url: featuredImage,
@@ -127,7 +178,7 @@ function EditArticleContent() {
             } : null
           },
           tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
-          categories: categories.split(',').map(cat => cat.trim()).filter(Boolean)
+          categories: selectedCategory ? [selectedCategory] : [],
         }
       };
 
@@ -155,9 +206,8 @@ function EditArticleContent() {
         setSubtitle('');
         setAuthor('');
         setPublicationDate('');
-        setOriginalPublication('');
         setTags('');
-        setCategories('');
+        setSelectedCategory('');
         setFeaturedImage(null);
         editor.commands.setContent('');
       }
@@ -286,6 +336,15 @@ function EditArticleContent() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
+      {/* Link back to Admin Dashboard */}
+      <div className="mb-6">
+        <a
+          href="/admin"
+          className="text-blue-600 hover:text-blue-800 font-semibold underline"
+        >
+          ← Back to Admin
+        </a>
+      </div>
       <h1 className="text-3xl font-bold mb-8">
         {slug ? 'Edit Article' : 'Create New Article'}
       </h1>
@@ -339,17 +398,8 @@ function EditArticleContent() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Original Publication</label>
-            <input
-              type="text"
-              value={originalPublication}
-              onChange={(e) => setOriginalPublication(e.target.value)}
-              className="w-full p-2 border rounded"
-            />
-          </div>
-
-          <div>
+          {/* Featured Image Field */}
+          <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-1">Featured Image</label>
             {/* Upload Button or Preview */}
             {uploading ? (
@@ -426,21 +476,86 @@ function EditArticleContent() {
               placeholder="Tag1, Tag2, Tag3"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium mb-1">Categories (comma-separated)</label>
-            <input
-              type="text"
-              value={categories}
-              onChange={(e) => setCategories(e.target.value)}
-              className="w-full p-2 border rounded"
-              placeholder="Category1, Category2"
-            />
+            <label className="block text-sm font-medium mb-1">Category</label>
+            {categoriesLoading ? (
+              <div className="text-gray-400 text-sm">Loading categories...</div>
+            ) : categoriesError ? (
+              <div className="text-red-500 text-sm">{categoriesError}</div>
+            ) : (
+              <>
+                <select
+                  className="w-full p-2 border rounded"
+                  value={selectedCategory}
+                  onChange={e => setSelectedCategory(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>Select a category</option>
+                  {categories.map((cat) => (
+                    <option key={cat._id || cat.slug} value={cat.slug}>{cat.name}</option>
+                  ))}
+                  <option value="__new__">+ Create new category</option>
+                </select>
+                {selectedCategory === '__new__' && (
+                  <div className="mt-2 flex gap-2 items-center">
+                    <input
+                      type="text"
+                      className="p-2 border rounded flex-1"
+                      placeholder="New category name"
+                      value={newCategoryName}
+                      onChange={e => setNewCategoryName(e.target.value)}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      className="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 transition-colors"
+                      disabled={creatingCategory || !newCategoryName.trim()}
+                      onClick={async () => {
+                        setCreatingCategory(true);
+                        setCreateCategoryError(null);
+                        try {
+                          const res = await fetch(`${API_BASE_URL}/categories`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              name: newCategoryName.trim(),
+                              slug: newCategoryName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')
+                            }),
+                          });
+                          if (!res.ok) throw new Error('Failed to create category');
+                          const newCat = await res.json();
+                          // Add new category to list and select it
+                          setCategories(prev => [...prev, newCat]);
+                          setSelectedCategory(newCat.slug);
+                          setNewCategoryName('');
+                        } catch (err) {
+                          setCreateCategoryError('Could not create category');
+                        } finally {
+                          setCreatingCategory(false);
+                        }
+                      }}
+                    >
+                      {creatingCategory ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                )}
+                {createCategoryError && <div className="text-red-500 text-sm mt-1">{createCategoryError}</div>}
+              </>
+            )}
           </div>
         </div>
 
         {/* Editor Toolbar */}
-        <div className="border rounded-t p-2 bg-gray-50 flex flex-wrap gap-2">
+        <div className="border rounded-t p-2 bg-gray-50 flex flex-wrap gap-2 items-center">
+          <button
+            type="button"
+            onClick={() => setIsHtmlMode((v) => !v)}
+            className="p-2 rounded transition-colors focus:ring-2 focus:ring-blue-300 hover:bg-blue-100 font-semibold"
+            title={isHtmlMode ? 'Switch to WYSIWYG' : 'Switch to HTML'}
+            aria-label={isHtmlMode ? 'Switch to WYSIWYG' : 'Switch to HTML'}
+          >
+            {isHtmlMode ? 'Switch to Editor' : 'Switch to HTML'}
+          </button>
           <button
             type="button"
             onClick={() => editor.chain().focus().toggleBold().run()}
@@ -530,8 +645,20 @@ function EditArticleContent() {
         </div>
 
         {/* Editor Content */}
-        <div className="border rounded-b p-4 min-h-[400px]">
-          <EditorContent editor={editor} />
+        <div className="border rounded-b p-4 min-h-[400px] bg-white">
+          {isHtmlMode ? (
+            <textarea
+              className="w-full h-[350px] font-mono text-sm border-none outline-none resize-none bg-white"
+              value={rawHtml}
+              onChange={e => setRawHtml(e.target.value)}
+              spellCheck={false}
+            />
+          ) : (
+            <EditorContent 
+              editor={editor} 
+              className="prose prose-lg max-w-none [&_.ProseMirror]:prose [&_.ProseMirror]:prose-lg [&_.ProseMirror]:max-w-none" 
+            />
+          )}
         </div>
 
         {/* Submit Button */}

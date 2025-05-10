@@ -11,4 +11,25 @@
 .prose li {
   margin-bottom: 0.5rem;
   list-style-type: disc;
+}
+
+.prose ul li:not(:first-child),
+.prose ol li:not(:first-child),
+.prose :where(ul > li:not(:first-child)),
+.prose :where(ol > li:not(:first-child)),
+.prose ul > li,
+.prose ol > li,
+.prose ul li,
+.prose ol li,
+.prose li + li {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  padding-top: 0 !important;
+}
+
+.prose ul > p,
+.prose ol > p {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 } 
