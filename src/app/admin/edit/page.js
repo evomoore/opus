@@ -5,7 +5,8 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
-import { useState, useEffect, Suspense } from 'react';
+import TextAlign from '@tiptap/extension-text-align';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 // Ensure the API URL is properly constructed
@@ -28,6 +29,7 @@ function EditArticleContent() {
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [showUrlInput, setShowUrlInput] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -39,9 +41,15 @@ function EditArticleContent() {
       Placeholder.configure({
         placeholder: 'Write your article content here...',
       }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph', 'image'],
+      }),
     ],
     content: '',
   });
+
+  // Ref for file input
+  const fileInputRef = useRef();
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -163,6 +171,7 @@ function EditArticleContent() {
     }
   };
 
+  // Cloudinary featured image upload handler
   const handleCloudinaryUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -172,24 +181,21 @@ function EditArticleContent() {
       const timestamp = Math.floor(Date.now() / 1000);
       const paramsToSign = {
         timestamp,
-        folder: 'featured-images', // Optional: change or remove as needed
+        folder: 'featured-images',
       };
-      // Get signature from API
       const res = await fetch('/api/cloudinary-sign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paramsToSign }),
       });
       const { signature } = await res.json();
-      // Prepare form data
       const formData = new FormData();
       formData.append('file', file);
       formData.append('api_key', process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY);
       formData.append('timestamp', timestamp);
       formData.append('signature', signature);
       formData.append('folder', 'featured-images');
-      formData.append('upload_preset', ''); // Optional: if you use unsigned uploads
-      // Upload to Cloudinary
+      formData.append('upload_preset', '');
       const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
       const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
       const uploadRes = await fetch(uploadUrl, {
@@ -199,6 +205,48 @@ function EditArticleContent() {
       const uploadData = await uploadRes.json();
       if (uploadData.secure_url) {
         setFeaturedImage(uploadData.secure_url);
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (err) {
+      setUploadError(err.message || 'Image upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Cloudinary inline image upload handler
+  const handleInlineImageUpload = async (file) => {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const paramsToSign = {
+        timestamp,
+        folder: 'inline-images',
+      };
+      const res = await fetch('/api/cloudinary-sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paramsToSign }),
+      });
+      const { signature } = await res.json();
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY);
+      formData.append('timestamp', timestamp);
+      formData.append('signature', signature);
+      formData.append('folder', 'inline-images');
+      formData.append('upload_preset', '');
+      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+      });
+      const uploadData = await uploadRes.json();
+      if (uploadData.secure_url) {
+        editor.chain().focus().setImage({ src: uploadData.secure_url }).run();
       } else {
         throw new Error('Upload failed');
       }
@@ -302,30 +350,67 @@ function EditArticleContent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Featured Image URL</label>
+            <label className="block text-sm font-medium mb-1">Featured Image</label>
+            {/* Upload Button or Preview */}
+            {uploading ? (
+              <div className="flex items-center space-x-2 mb-2">
+                <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></span>
+                <span className="text-blue-500 text-sm">Uploading image...</span>
+              </div>
+            ) : featuredImage ? (
+              <div className="mb-2 relative group w-full max-w-xs">
+                <img
+                  src={featuredImage}
+                  alt="Featured Preview"
+                  className="w-full rounded shadow"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFeaturedImage(null)}
+                  className="absolute top-2 right-2 bg-white bg-opacity-80 hover:bg-red-500 hover:text-white text-red-600 rounded-full p-1 shadow transition-colors"
+                  title="Remove image"
+                  aria-label="Remove featured image"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            ) : (
+              <div className="mb-2 flex flex-col items-start gap-2">
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('featured-image-upload').click()}
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors shadow"
+                >
+                  Upload Featured Image
+                </button>
+                <span className="text-gray-400 text-xs">No image uploaded</span>
+              </div>
+            )}
             <input
-              type="url"
-              value={featuredImage || ''}
-              onChange={(e) => setFeaturedImage(e.target.value)}
-              className="w-full p-2 border rounded mb-2"
-              placeholder="https://example.com/image.jpg"
-            />
-            <input
+              id="featured-image-upload"
               type="file"
               accept="image/*"
               onChange={handleCloudinaryUpload}
-              className="block mb-2"
+              className="hidden"
               aria-label="Upload featured image"
             />
-            {uploading && <div className="text-blue-500 text-sm mb-2">Uploading image...</div>}
-            {uploadError && <div className="text-red-500 text-sm mb-2">{uploadError}</div>}
-            {featuredImage && (
-              <img
-                src={featuredImage}
-                alt="Featured Preview"
-                className="w-full max-w-xs rounded shadow mb-2"
+            <button
+              type="button"
+              onClick={() => setShowUrlInput((v) => !v)}
+              className="text-blue-500 text-xs underline mt-1 mb-2 hover:text-blue-700"
+            >
+              {showUrlInput ? 'Hide URL input' : 'Enter URL manually'}
+            </button>
+            {showUrlInput && (
+              <input
+                type="url"
+                value={featuredImage || ''}
+                onChange={(e) => setFeaturedImage(e.target.value)}
+                className="w-full p-2 border rounded mb-2"
+                placeholder="https://example.com/image.jpg"
               />
             )}
+            {uploadError && <div className="text-red-500 text-sm mb-2">{uploadError}</div>}
           </div>
         </div>
 
@@ -355,39 +440,92 @@ function EditArticleContent() {
         </div>
 
         {/* Editor Toolbar */}
-        <div className="border rounded-t p-2 bg-gray-50">
+        <div className="border rounded-t p-2 bg-gray-50 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => editor.chain().focus().toggleBold().run()}
-            className={`p-2 rounded ${editor?.isActive('bold') ? 'bg-gray-200' : ''}`}
+            className={`p-2 rounded transition-colors focus:ring-2 focus:ring-blue-300 hover:bg-blue-100 ${editor?.isActive('bold') ? 'bg-gray-200' : ''}`}
+            title="Bold"
+            aria-label="Bold"
           >
             Bold
           </button>
           <button
             type="button"
             onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={`p-2 rounded ${editor?.isActive('italic') ? 'bg-gray-200' : ''}`}
+            className={`p-2 rounded transition-colors focus:ring-2 focus:ring-blue-300 hover:bg-blue-100 ${editor?.isActive('italic') ? 'bg-gray-200' : ''}`}
+            title="Italic"
+            aria-label="Italic"
           >
             Italic
           </button>
           <button
             type="button"
             onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={`p-2 rounded ${editor?.isActive('bulletList') ? 'bg-gray-200' : ''}`}
+            className={`p-2 rounded transition-colors focus:ring-2 focus:ring-blue-300 hover:bg-blue-100 ${editor?.isActive('bulletList') ? 'bg-gray-200' : ''}`}
+            title="Bullet List"
+            aria-label="Bullet List"
           >
             Bullet List
           </button>
           <button
             type="button"
             onClick={() => {
-              const url = window.prompt('Enter image URL:');
-              if (url) {
-                editor.chain().focus().setImage({ src: url }).run();
-              }
+              if (fileInputRef.current) fileInputRef.current.value = '';
+              fileInputRef.current?.click();
             }}
-            className="p-2 rounded"
+            className="p-2 rounded transition-colors focus:ring-2 focus:ring-blue-300 hover:bg-blue-100"
+            title="Add Image"
+            aria-label="Add Image"
           >
             Add Image
+          </button>
+          <input
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={async (e) => {
+              const file = e.target.files[0];
+              if (file) {
+                await handleInlineImageUpload(file);
+              } else {
+                // fallback: prompt for URL
+                const url = window.prompt('Enter image URL:');
+                if (url) {
+                  editor.chain().focus().setImage({ src: url }).run();
+                }
+              }
+            }}
+            aria-label="Upload inline image"
+          />
+          {/* Alignment Buttons */}
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+            className={`p-2 rounded transition-colors focus:ring-2 focus:ring-blue-300 hover:bg-blue-100 ${editor?.isActive({ textAlign: 'left' }) ? 'bg-gray-200' : ''}`}
+            title="Align Left"
+            aria-label="Align Left"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h10M4 14h16M4 18h10" /></svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+            className={`p-2 rounded transition-colors focus:ring-2 focus:ring-blue-300 hover:bg-blue-100 ${editor?.isActive({ textAlign: 'center' }) ? 'bg-gray-200' : ''}`}
+            title="Align Center"
+            aria-label="Align Center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 6h8M4 10h16M8 14h8M4 18h16" /></svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+            className={`p-2 rounded transition-colors focus:ring-2 focus:ring-blue-300 hover:bg-blue-100 ${editor?.isActive({ textAlign: 'right' }) ? 'bg-gray-200' : ''}`}
+            title="Align Right"
+            aria-label="Align Right"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M10 10h10M4 14h16M10 18h10" /></svg>
           </button>
         </div>
 
