@@ -114,7 +114,7 @@ export default function PostPage({ params }) {
       </header>
       {/* Category Navigation Bar */}
       {categories.length > 0 && (
-        <nav className="w-full bg-gray-50 border-b mb-6">
+        <nav className="w-full bg-gray-50 border-b mb-2">
           <ul className="flex flex-wrap gap-4 px-6 py-3 max-w-4xl mx-auto">
             {categories.map((cat) => {
               const isActive = article?.categories?.some(
@@ -138,9 +138,32 @@ export default function PostPage({ params }) {
           </ul>
         </nav>
       )}
-      <article className="max-w-4xl mx-auto px-4 py-8">
+      <article className="max-w-4xl mx-auto px-4 py-4">
+        {/* Breadcrumbs */}
+        <nav className="mb-6" aria-label="Breadcrumb">
+          <ol className="flex flex-wrap items-center text-sm text-gray-500 gap-1">
+            <li>
+              <Link href="/" className="hover:underline text-gray-600">Home</Link>
+            </li>
+            <li className="mx-1">/</li>
+            {article.categories && article.categories.length > 0 ? (
+              <>
+                <li>
+                  <Link
+                    href={`/category/${typeof article.categories[0] === 'object' ? article.categories[0].slug : categories.find(c => c.name === article.categories[0] || c.slug === article.categories[0])?.slug || article.categories[0]}`}
+                    className="hover:underline text-gray-600"
+                  >
+                    {typeof article.categories[0] === 'object' ? article.categories[0].name : article.categories[0]}
+                  </Link>
+                </li>
+                <li className="mx-1">/</li>
+              </>
+            ) : null}
+            <li className="truncate text-gray-800 font-semibold" aria-current="page">{article.title}</li>
+          </ol>
+        </nav>
         {/* Article Header */}
-        <header className="mb-8">
+        <header className="mb-4">
           <h1 className="text-4xl font-bold mb-4">{article.title}</h1>
           {article.subtitle && (
             <h2 className="text-2xl text-gray-600 mb-4">{article.subtitle}</h2>

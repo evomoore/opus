@@ -1,18 +1,17 @@
 {
     "article": {
         "title": "Bad Magazine Review",
-        "subtitle": "A Forgotten Parody of Mad Magazine",
+        "subtitle": "Esquire Magazine - August 1964 - 5 Pages",
         "slug": "bad-magazine-review",
         "meta": {
             "publication_date": "2011-05-23",
-            "original_publication": "Esquire Magazine - August 1964",
             "author": "JAM",
             "status": "published"
         },
         "content": "<p>This is a very short parody of <strong>Mad</strong> magazine that appeared without writing credit in Esquire magazine. The color cover drawing shows the big-footed Bad mascot with a foot in a bucket and a finger in the nose. The cover drawing is signed by \"Hampton.\"</p>\n\n<div class=\"highlight\">\n<p>The parody starts with the letters page that really has little to do with the subject of the parody. The other three pages are each one-page departments regarding a movie, a classroom and \"real\" problems.</p>\n</div>\n\n<p>The third and fourth pages are populated by mediocre caricatures of various celebrities including:</p>\n\n<ul>\n<li>Orphan Annie</li>\n<li>Peter Lorre</li>\n<li>Liberace</li>\n<li>Harpo Marx</li>\n<li>Charles DeGaulle</li>\n<li>Moshe Dayan</li>\n<li>Tom Dewey</li>\n<li>Ben Turpin</li>\n<li>Oliver Hardy</li>\n<li>Edward G. Robinson</li>\n<li>Frankenstein's monster</li>\n<li>Nikita Khrushchev</li>\n<li>W.C. Fields</li>\n<li>Dennis the Menace</li>\n</ul>\n\n<p>Esquire does not offer any explanation of the purpose of the parody. Its benign and brief comments appear below the photographed and apparently unedited content that was delivered to Esquire from an unknown source.</p>\n\n<p>This is the type of drivel that I would expect to see in <strong>Cracked</strong> or one of the other copiers of Mad. Printed in Esquire, it seems to be just a page filler that was little noticed by its readers.</p>\n\n<p><em>If anyone knows who produced this and why, please send me a note.</em></p>",
         "media": {
             "featured_image": {
-                "url": "/images/bad-esquire-1964.jpg",
+                "url": "https://res.cloudinary.com/phonetag/image/upload/v1746825086/featured-images/bad-esquire-1964.jpg",
                 "alt": "Bad Magazine Cover - Esquire 1964",
                 "title": "Bad Magazine Cover - Esquire 1964"
             }
@@ -22,13 +21,10 @@
             "Esquire",
             "Parody",
             "Comics",
-            "1964",
-            "Magazine Review"
+            "1964"
         ],
         "categories": [
-            "Magazine Reviews",
-            "Comics",
-            "Parody"
+            "Book Reviews"
         ]
     }
 } 
