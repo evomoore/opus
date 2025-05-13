@@ -18,6 +18,7 @@ export default function AdminDashboard() {
   const [categories, setCategories] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortOrder, setSortOrder] = useState('alpha'); // default to alphabetical
   const ARTICLES_PER_PAGE = 20;
 
   useEffect(() => {
@@ -124,14 +125,27 @@ export default function AdminDashboard() {
         return false;
       })
     : articles;
-  const totalPages = Math.ceil(filteredArticles.length / ARTICLES_PER_PAGE);
-  const paginatedArticles = filteredArticles.slice(
+
+  // Sort articles based on selected sort order
+  const sortedArticles = [...filteredArticles].sort((a, b) => {
+    if (sortOrder === 'alpha') {
+      return (a.title || '').localeCompare(b.title || '');
+    } else {
+      // Sort by publication date, newest first
+      const dateA = new Date(a.meta?.publication_date || a.createdAt || 0);
+      const dateB = new Date(b.meta?.publication_date || b.createdAt || 0);
+      return dateB - dateA;
+    }
+  });
+
+  const totalPages = Math.ceil(sortedArticles.length / ARTICLES_PER_PAGE);
+  const paginatedArticles = sortedArticles.slice(
     (currentPage - 1) * ARTICLES_PER_PAGE,
     currentPage * ARTICLES_PER_PAGE
   );
 
-  // Reset to page 1 if filter changes
-  useEffect(() => { setCurrentPage(1); }, [categoryFilter]);
+  // Reset to page 1 if filter or sort changes
+  useEffect(() => { setCurrentPage(1); }, [categoryFilter, sortOrder]);
 
   if (isLoading) {
     return (
@@ -223,6 +237,15 @@ export default function AdminDashboard() {
           {categories.map((cat) => (
             <option key={cat.slug || cat} value={cat.slug || cat.name || cat}>{cat.name || cat}</option>
           ))}
+        </select>
+        <label className="font-medium ml-4">Sort by:</label>
+        <select
+          className="p-2 border rounded min-w-[180px]"
+          value={sortOrder}
+          onChange={e => setSortOrder(e.target.value)}
+        >
+          <option value="alpha">Alphabetical (A–Z)</option>
+          <option value="date">Publication Date (Newest)</option>
         </select>
       </div>
       {selectedSlugs.length > 0 && (
