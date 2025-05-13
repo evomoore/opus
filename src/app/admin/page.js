@@ -78,11 +78,21 @@ export default function AdminDashboard() {
     let anyError = false;
     for (const slug of selectedSlugs) {
       try {
-        const res = await fetch(`${API_BASE_URL}/articles/${slug}`, { method: 'DELETE' });
+        console.log('Attempting to delete article:', slug);
+        const res = await fetch(`${API_BASE_URL}/articles/${slug}`, { 
+          method: 'DELETE',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
         if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          console.error('Delete failed:', errorData);
           anyError = true;
         }
-      } catch {
+      } catch (err) {
+        console.error('Delete error:', err);
         anyError = true;
       }
     }
@@ -96,14 +106,23 @@ export default function AdminDashboard() {
     setDeleteError(null);
     if (!window.confirm('Are you sure you want to delete this article?')) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/articles/${slug}`, { method: 'DELETE' });
+      console.log('Attempting to delete article:', slug);
+      const res = await fetch(`${API_BASE_URL}/articles/${slug}`, { 
+        method: 'DELETE',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || 'Failed to delete article');
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Delete failed:', errorData);
+        throw new Error(errorData.message || 'Failed to delete article');
       }
       setArticles((prev) => prev.filter((a) => a.slug !== slug));
       setSelectedSlugs((prev) => prev.filter((s) => s !== slug));
     } catch (err) {
+      console.error('Delete error:', err);
       setDeleteError(err.message || 'Delete failed.');
     }
   };
