@@ -12,6 +12,38 @@ import '../../post/[slug]/post-content.css';
 import { Extension } from '@tiptap/core';
 import ListItem from '@tiptap/extension-list-item';
 
+// Custom extension to handle broken images
+const BrokenImageHandler = Extension.create({
+  name: 'brokenImageHandler',
+  onCreate() {
+    console.log('[BrokenImageHandler] Created and attaching event listeners.');
+    // Add event listener to handle broken images in the editor
+    this.editor.view.dom.addEventListener('error', (event) => {
+      if (event.target.tagName === 'IMG') {
+        console.log('[BrokenImageHandler] Image error event triggered for:', event.target);
+        event.target.classList.add('broken-image');
+        event.target.setAttribute('title', 'Click to replace broken image');
+      }
+    }, true);
+
+    // Add click handler for broken images
+    this.editor.view.dom.addEventListener('click', (event) => {
+      console.log('[BrokenImageHandler] Click event on editor DOM:', event.target);
+      if (event.target.tagName === 'IMG' && event.target.classList.contains('broken-image')) {
+        console.log('[BrokenImageHandler] Broken image clicked:', event.target);
+        event.preventDefault();
+        event.stopPropagation();
+        if (this.options.handleBrokenImage) {
+          console.log('[BrokenImageHandler] Calling handleBrokenImage function from options.');
+          this.options.handleBrokenImage(event.target);
+        } else {
+          console.warn('[BrokenImageHandler] handleBrokenImage function not found in options.');
+        }
+      }
+    }, true);
+  },
+});
+
 // Sanitize function to remove <p> tags directly inside <ul> or <ol>
 function sanitizeListParagraphs(html) {
   return html.replace(/<(ul|ol)>([\s\S]*?)<\/\1>/g, (match, tag, inner) => {
@@ -27,6 +59,7 @@ function EditArticleContent() {
   const searchParams = useSearchParams();
   const slug = searchParams.get('slug');
   
+  // State declarations
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [author, setAuthor] = useState('');
@@ -48,7 +81,29 @@ function EditArticleContent() {
   const [createCategoryError, setCreateCategoryError] = useState(null);
   const [isHtmlMode, setIsHtmlMode] = useState(false);
   const [rawHtml, setRawHtml] = useState('');
+  const [showBrokenImageModal, setShowBrokenImageModal] = useState(false);
+  const [currentBrokenImage, setCurrentBrokenImage] = useState(null);
 
+  // Refs
+  const fileInputRef = useRef();
+
+  // Broken image handlers
+  const handleBrokenImage = (imgElement) => {
+    console.log('[EditArticleContent] handleBrokenImage called for:', imgElement);
+    setCurrentBrokenImage(imgElement);
+    setShowBrokenImageModal(true);
+  };
+
+  const replaceBrokenImage = (newUrl) => {
+    if (currentBrokenImage && editor) {
+      const pos = editor.view.posAtDOM(currentBrokenImage, 0);
+      editor.chain().focus().setNodeSelection(pos).setImage({ src: newUrl }).run();
+      setShowBrokenImageModal(false);
+      setCurrentBrokenImage(null);
+    }
+  };
+
+  // Editor initialization
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -62,12 +117,12 @@ function EditArticleContent() {
       TextAlign.configure({
         types: ['heading', 'paragraph', 'image'],
       }),
+      BrokenImageHandler.configure({
+        handleBrokenImage: handleBrokenImage,
+      }),
     ],
     content: '',
   });
-
-  // Ref for file input
-  const fileInputRef = useRef();
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -194,13 +249,39 @@ function EditArticleContent() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save article');
+        // Log basic error info
+        console.error(`Server error. Status: ${response.status} ${response.statusText}`);
+        let errorDetail = 'Failed to save article due to a server error.';
+        try {
+          const errorData = await response.json();
+          console.error('Server error response (JSON):', errorData);
+          if (errorData && typeof errorData === 'object') {
+            errorDetail = errorData.message || errorData.error || errorData.detail || JSON.stringify(errorData);
+          } else if (errorData) {
+            errorDetail = JSON.stringify(errorData); // Handle cases where errorData is not an object but still JSON (e.g. a string)
+          }
+        } catch (jsonError) {
+          console.warn('Could not parse error response as JSON:', jsonError);
+          try {
+            const textError = await response.text();
+            console.error('Server error response (text):', textError);
+            if (textError) {
+              errorDetail = textError.length > 300 ? textError.substring(0, 300) + "... (response truncated)" : textError;
+            } else {
+              errorDetail = 'Server returned an empty non-JSON error response.';
+            }
+          } catch (textParseError) {
+            console.error('Could not parse error response as text:', textParseError);
+            errorDetail = `Server returned an unparseable error response (Status: ${response.status}).`;
+          }
+        }
+        // Construct a more informative error message
+        const errorMessage = `Error: ${response.status} ${response.statusText}. Details: ${errorDetail}`;
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
       
-      // Only clear form if it's a new article
       if (!slug) {
         setTitle('');
         setSubtitle('');
@@ -214,8 +295,8 @@ function EditArticleContent() {
       
       alert(`Article ${slug ? 'updated' : 'saved'} successfully!`);
     } catch (error) {
-      console.error('Error saving article:', error);
-      alert(error.message || 'Failed to save article. Please try again.');
+      console.error('Error saving article (handleSubmit catch block):', error);
+      alert(error.message || 'An unexpected error occurred. Please check console for more details.');
     } finally {
       setIsSubmitting(false);
     }
@@ -349,7 +430,7 @@ function EditArticleContent() {
         {slug ? 'Edit Article' : 'Create New Article'}
       </h1>
       
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} id="editArticleForm" className="space-y-6 pb-24">
         {/* Basic Information */}
         <div className="space-y-4">
           <div>
@@ -546,7 +627,7 @@ function EditArticleContent() {
         </div>
 
         {/* Editor Toolbar */}
-        <div className="border rounded-t p-2 bg-gray-50 flex flex-wrap gap-2 items-center">
+        <div className="border rounded-t p-2 bg-gray-50 flex flex-wrap gap-2 items-center sticky top-0 z-10">
           <button
             type="button"
             onClick={() => setIsHtmlMode((v) => !v)}
@@ -645,7 +726,7 @@ function EditArticleContent() {
         </div>
 
         {/* Editor Content */}
-        <div className="border rounded-b p-4 min-h-[400px] bg-white">
+        <div className="border rounded-b p-4 min-h-[400px] bg-white relative">
           {isHtmlMode ? (
             <textarea
               className="w-full h-[350px] font-mono text-sm border-none outline-none resize-none bg-white"
@@ -660,11 +741,14 @@ function EditArticleContent() {
             />
           )}
         </div>
+      </form>
 
-        {/* Submit Button */}
-        <div className="flex justify-end">
+      {/* Sticky Footer for Submit Button */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-md z-10">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex justify-end">
           <button
             type="submit"
+            form="editArticleForm"
             disabled={isSubmitting}
             className={`bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition-colors ${
               isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
@@ -673,7 +757,58 @@ function EditArticleContent() {
             {isSubmitting ? 'Saving...' : 'Save Article'}
           </button>
         </div>
-      </form>
+      </div>
+
+      {/* Broken Image Modal */}
+      {showBrokenImageModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">Replace Broken Image</h3>
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => {
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                  fileInputRef.current?.click();
+                  setShowBrokenImageModal(false);
+                }}
+                className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+              >
+                Upload New Image
+              </button>
+              <div className="relative">
+                <input
+                  type="url"
+                  placeholder="Or enter image URL"
+                  className="w-full p-2 border rounded"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      replaceBrokenImage(e.target.value);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={(e) => replaceBrokenImage(e.target.closest('div').querySelector('input').value)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500 hover:text-blue-700"
+                >
+                  Replace
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBrokenImageModal(false);
+                  setCurrentBrokenImage(null);
+                }}
+                className="w-full border border-gray-300 px-4 py-2 rounded hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

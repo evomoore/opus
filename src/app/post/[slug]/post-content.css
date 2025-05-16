@@ -32,4 +32,66 @@
 .prose ol > p {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
-} 
+}
+
+/* Styling for broken images in the editor */
+.ProseMirror img.broken-image, /* Increased specificity */
+img.broken-image { /* General case */
+  position: relative !important;
+  display: inline-block !important; /* Ensure display property */
+  min-height: 100px !important;
+  min-width: 250px !important; /* Increased min-width from 150px to 250px */
+  background: #f3f4f6 !important;
+  border: 3px solid red !important; /* Made border !important */
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-sizing: border-box !important; /* Ensure border is part of the dimensions */
+}
+
+.ProseMirror img.broken-image:hover, /* Increased specificity */
+img.broken-image:hover {
+  background: #e5e7eb !important;
+  border-color: #c00 !important; /* Darker red on hover */
+}
+
+.ProseMirror img.broken-image::before, /* Increased specificity */
+img.broken-image::before {
+  content: '🖼️ Broken: ' attr(src) !important; /* Display src attribute */
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  font-size: 12px !important; /* Adjusted font size for potentially long URLs */
+  color: #4b5563 !important; /* Darker text color */
+  white-space: normal !important; /* Allow text to wrap if URL is long */
+  word-break: break-all; /* Break long URLs to prevent overflow */
+  padding: 8px !important; /* Increased padding for better readability */
+  background-color: rgba(255, 255, 255, 0.85) !important; /* Slightly more opaque background */
+  border-radius: 3px !important;
+  text-align: center !important; /* Center the text */
+  max-width: 90%; /* Prevent text from becoming too wide */
+}
+
+/* Attempt to hide the browser's default broken image icon more aggressively */
+.ProseMirror img.broken-image[src], /* Increased specificity */
+img.broken-image[src] {
+  opacity: 1 !important; /* We want to see our custom content */
+  color: transparent !important; /* Hide the alt text if it shows up as browser default */
+  background-image: none !important; /* Remove any default background image for broken state */
+}
+
+/* Remove the ::after pseudo-element as its content is merged into ::before */
+/*
+.ProseMirror img.broken-image::after,
+img.broken-image::after {
+  content: 'Click to replace broken image';
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 20px);
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+*/ 

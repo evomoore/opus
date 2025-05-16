@@ -18,7 +18,7 @@ function HeaderNav({ categories, currentCategory }) {
   );
 }
 
-export default function HistoryPage() {
+export default function MadPage() {
   const [categories, setCategories] = useState([]);
   const [articles, setArticles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,14 +41,14 @@ export default function HistoryPage() {
     fetchCategories();
   }, []);
 
-  // Fetch all history articles (no pagination on API)
+  // Fetch all mad articles (no pagination on API)
   useEffect(() => {
     setIsLoading(true);
     setError(null);
     const fetchArticles = async () => {
       try {
         const res = await fetch(
-          `${API_BASE_URL}/articles?category=History`
+          `${API_BASE_URL}/articles?category=Mad`
         );
         if (!res.ok) throw new Error("Failed to fetch articles");
         const data = await res.json();
@@ -56,7 +56,7 @@ export default function HistoryPage() {
         setArticles(allArticles);
         setTotalPages(Math.ceil(allArticles.length / ARTICLES_PER_PAGE));
       } catch (err) {
-        setError("Failed to load history articles");
+        setError("Failed to load mad articles");
       } finally {
         setIsLoading(false);
       }
@@ -93,12 +93,12 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <HeaderNav categories={categories} currentCategory="history" />
+      <HeaderNav categories={categories} currentCategory="mad" />
       {categories.length > 0 && (
         <nav className="w-full bg-gray-50 border-b mb-2">
           <ul className="flex flex-wrap gap-4 px-6 py-3 max-w-4xl mx-auto">
             {categories.map((cat) => {
-              const isActive = "history" === cat.slug;
+              const isActive = "mad" === cat.slug;
               return (
                 <li key={cat._id || cat.slug}>
                   <Link
@@ -125,10 +125,10 @@ export default function HistoryPage() {
               <Link href="/" className="hover:underline text-gray-600">Home</Link>
             </li>
             <li className="mx-1">/</li>
-            <li className="truncate text-gray-800 font-semibold" aria-current="page">History</li>
+            <li className="truncate text-gray-800 font-semibold" aria-current="page">Mad</li>
           </ol>
         </nav>
-        <h1 className="text-3xl font-bold mb-4">History</h1>
+        <h1 className="text-3xl font-bold mb-4">Mad</h1>
         {/* Sort Dropdown and Top Pagination */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -184,12 +184,12 @@ export default function HistoryPage() {
           </div>
         )}
         {isLoading ? (
-          <div className="text-center text-gray-500 py-12">Loading history articles...</div>
+          <div className="text-center text-gray-500 py-12">Loading mad articles...</div>
         ) : error ? (
           <div className="text-center text-red-500 py-12">{error}</div>
         ) : (
           <>
-            {/* Grid of history articles */}
+            {/* Grid of mad articles */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 max-w-4xl mx-auto">
               {paginatedArticles.map((article) => (
                 <Link
@@ -205,8 +205,8 @@ export default function HistoryPage() {
                     />
                   ) : (
                     <img
-                      src="https://res.cloudinary.com/phonetag/image/upload/v1747356429/default-images/btz2ovgqh25ndv0cpse2.png"
-                      alt="Default history article cover"
+                      src="https://res.cloudinary.com/phonetag/image/upload/v1747421822/default-images/u1rcp0ej5urz60ce0qj2.png"
+                      alt="Default mad article cover"
                       className="w-full h-48 object-cover group-hover:scale-105 transition-transform opacity-60"
                     />
                   )}
