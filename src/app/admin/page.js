@@ -14,6 +14,10 @@ export default function AdminDashboard() {
   const [importSuccess, setImportSuccess] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
   const [selectedSlugs, setSelectedSlugs] = useState([]);
+  const [editorNote, setEditorNote] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [noteError, setNoteError] = useState(null);
+  const [noteSuccess, setNoteSuccess] = useState(null);
   const fileInputRef = useRef();
   const [categories, setCategories] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -55,6 +59,23 @@ export default function AdminDashboard() {
       }
     };
     fetchCategories();
+  }, []);
+
+  // Fetch editor note on component mount
+  useEffect(() => {
+    const fetchEditorNote = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/editor-notes`);
+        if (!res.ok) throw new Error('Failed to fetch editor note');
+        const data = await res.json();
+        // The API returns an array of notes, we want the first one
+        const note = Array.isArray(data) ? data[0] : data;
+        setEditorNote(note?.content || '');
+      } catch (err) {
+        console.error('Error fetching editor note:', err);
+      }
+    };
+    fetchEditorNote();
   }, []);
 
   const handleSelect = (slug) => {
@@ -124,6 +145,26 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error('Delete error:', err);
       setDeleteError(err.message || 'Delete failed.');
+    }
+  };
+
+  // Save editor note
+  const handleSaveNote = async () => {
+    setIsSavingNote(true);
+    setNoteError(null);
+    setNoteSuccess(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/editor-notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editorNote }),
+      });
+      if (!res.ok) throw new Error('Failed to save editor note');
+      setNoteSuccess('Editor note saved successfully!');
+    } catch (err) {
+      setNoteError(err.message || 'Failed to save editor note');
+    } finally {
+      setIsSavingNote(false);
     }
   };
 
@@ -243,6 +284,30 @@ export default function AdminDashboard() {
           >
             Create New Article
           </Link>
+        </div>
+      </div>
+      <div className="mb-8 bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-semibold mb-4">Note from the Editor</h2>
+        <div className="mb-4">
+          <textarea
+            value={editorNote}
+            onChange={(e) => setEditorNote(e.target.value)}
+            className="w-full h-32 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Enter the note from the editor..."
+          />
+        </div>
+        <div className="flex justify-between items-center">
+          <div>
+            {noteError && <p className="text-red-500 text-sm">{noteError}</p>}
+            {noteSuccess && <p className="text-green-500 text-sm">{noteSuccess}</p>}
+          </div>
+          <button
+            onClick={handleSaveNote}
+            disabled={isSavingNote}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
+          >
+            {isSavingNote ? 'Saving...' : 'Save Note'}
+          </button>
         </div>
       </div>
       <div className="mb-4 flex items-center gap-4">

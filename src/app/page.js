@@ -29,6 +29,7 @@ export default function HomePage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editorNote, setEditorNote] = useState('');
 
   // Fetch categories for nav
   useEffect(() => {
@@ -42,6 +43,23 @@ export default function HomePage() {
       }
     };
     fetchCategories();
+  }, []);
+
+  // Fetch editor note
+  useEffect(() => {
+    const fetchEditorNote = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/editor-notes`);
+        if (!res.ok) throw new Error('Failed to fetch editor note');
+        const data = await res.json();
+        // The API returns an array of notes, we want the first one
+        const note = Array.isArray(data) ? data[0] : data;
+        setEditorNote(note?.content || '');
+      } catch (err) {
+        console.error('Error fetching editor note:', err);
+      }
+    };
+    fetchEditorNote();
   }, []);
 
   // Fetch latest articles for each section
@@ -172,16 +190,14 @@ export default function HomePage() {
       )}
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Note from the Editor */}
-        <section className="mb-12 bg-blue-50 rounded-lg p-6 border border-blue-100">
-          <h2 className="text-2xl font-bold mb-4">Note from the Editor</h2>
-          <div className="prose prose-lg max-w-none">
-            <p className="text-gray-700">
-              Welcome to Mindsnack Books, your destination for thoughtful reviews, engaging stories, and delightful content. 
-              Here you'll find our latest articles across various categories, from book and movie reviews to humor and snacks. 
-              We're committed to bringing you quality content that entertains, informs, and inspires.
-            </p>
-          </div>
-        </section>
+        {editorNote && (
+          <section className="mb-12 bg-blue-50 rounded-lg p-6 border border-blue-100">
+            <h2 className="text-2xl font-bold mb-4">Note from the Editor</h2>
+            <div className="prose prose-lg max-w-none">
+              <p className="text-gray-700">{editorNote}</p>
+            </div>
+          </section>
+        )}
 
         {isLoading ? (
           <div className="text-center text-gray-500 py-12">Loading latest articles...</div>
