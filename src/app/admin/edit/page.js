@@ -7,7 +7,7 @@ import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
 import { useState, useEffect, Suspense, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import '../../post/[slug]/post-content.css';
 import { Extension } from '@tiptap/core';
 import ListItem from '@tiptap/extension-list-item';
@@ -57,6 +57,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackm
 
 function EditArticleContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const slug = searchParams.get('slug');
   
   // State declarations
@@ -283,17 +284,12 @@ function EditArticleContent() {
       const result = await response.json();
       
       if (!slug) {
-        setTitle('');
-        setSubtitle('');
-        setAuthor('');
-        setPublicationDate('');
-        setTags('');
-        setSelectedCategory('');
-        setFeaturedImage(null);
-        editor.commands.setContent('');
+        // After creating a new article, redirect to edit page with the new slug
+        router.push(`/admin/edit?slug=${result.slug}`);
+      } else {
+        // For existing articles, just show success message
+        alert('Article updated successfully!');
       }
-      
-      alert(`Article ${slug ? 'updated' : 'saved'} successfully!`);
     } catch (error) {
       console.error('Error saving article (handleSubmit catch block):', error);
       alert(error.message || 'An unexpected error occurred. Please check console for more details.');
