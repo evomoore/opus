@@ -65,6 +65,7 @@ function EditArticleContent() {
   const [subtitle, setSubtitle] = useState('');
   const [author, setAuthor] = useState('');
   const [publicationDate, setPublicationDate] = useState('');
+  const [publicationStatus, setPublicationStatus] = useState('published');
   const [tags, setTags] = useState('');
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -156,6 +157,7 @@ function EditArticleContent() {
         // Format the publication date for the input field
         const pubDate = article.meta?.publication_date;
         setPublicationDate(pubDate ? new Date(pubDate).toISOString().split('T')[0] : '');
+        setPublicationStatus(article.meta?.status ?? 'published');
         setTags(Array.isArray(article.tags) ? article.tags.join(', ') : '');
         setSelectedCategory(
           Array.isArray(article.categories) && article.categories[0]
@@ -223,7 +225,7 @@ function EditArticleContent() {
           meta: {
             publication_date: publicationDate,
             author,
-            status: 'published'
+            status: publicationStatus
           },
           content: sanitizeListParagraphs(editor.getHTML()),
           media: {
@@ -473,6 +475,19 @@ function EditArticleContent() {
               className="w-full p-2 border rounded"
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Publication Status</label>
+            <select
+              value={publicationStatus}
+              onChange={(e) => setPublicationStatus(e.target.value)}
+              className="w-full p-2 border rounded"
+              required
+            >
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+            </select>
           </div>
 
           {/* Featured Image Field */}

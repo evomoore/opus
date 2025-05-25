@@ -248,23 +248,25 @@ export default function AdminDashboard() {
       <div className="mb-4 flex items-center gap-4">
         <label className="font-medium">Filter by Category:</label>
         <select
-          className="p-2 border rounded min-w-[180px]"
           value={categoryFilter}
-          onChange={e => setCategoryFilter(e.target.value)}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="p-2 border rounded"
         >
           <option value="">All Categories</option>
           {categories.map((cat) => (
-            <option key={cat.slug || cat} value={cat.slug || cat.name || cat}>{cat.name || cat}</option>
+            <option key={cat._id || cat.slug} value={cat.slug}>
+              {cat.name}
+            </option>
           ))}
         </select>
-        <label className="font-medium ml-4">Sort by:</label>
+        <label className="font-medium">Sort by:</label>
         <select
-          className="p-2 border rounded min-w-[180px]"
           value={sortOrder}
-          onChange={e => setSortOrder(e.target.value)}
+          onChange={(e) => setSortOrder(e.target.value)}
+          className="p-2 border rounded"
         >
-          <option value="alpha">Alphabetical (A–Z)</option>
-          <option value="date">Publication Date (Newest)</option>
+          <option value="alpha">Alphabetical</option>
+          <option value="date">Publication Date</option>
         </select>
       </div>
       {selectedSlugs.length > 0 && (
@@ -277,88 +279,100 @@ export default function AdminDashboard() {
         </button>
       )}
       {importing && <div className="text-blue-500 mb-2">Importing article...</div>}
-      {importError && <div className="text-red-500 mb-2">{importError}</div>}
-      {importSuccess && <div className="text-green-600 mb-2">{importSuccess}</div>}
-      {deleteError && <div className="text-red-500 mb-2">{deleteError}</div>}
+      {importError && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-600">
+          {importError}
+        </div>
+      )}
+      {importSuccess && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded text-green-600">
+          {importSuccess}
+        </div>
+      )}
+      {deleteError && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-600">
+          {deleteError}
+        </div>
+      )}
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-2 py-3">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="p-2 text-left w-8">
                 <input
                   type="checkbox"
-                  checked={selectedSlugs.length === paginatedArticles.length && paginatedArticles.length > 0}
+                  checked={selectedSlugs.length === articles.length}
                   onChange={handleSelectAll}
-                  aria-label="Select all articles"
+                  className="mr-2"
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Title
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Category
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Author
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              <th className="p-2 text-left w-1/4">Title</th>
+              <th className="p-2 text-left w-1/5">Category</th>
+              <th className="p-2 text-left w-24">Status</th>
+              <th className="p-2 text-left w-32">Date</th>
+              <th className="p-2 text-left w-48">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {paginatedArticles.map((article) => (
-              <tr key={article.slug}>
-                <td className="px-2 py-4">
+              <tr key={article.slug} className="border-b hover:bg-gray-50">
+                <td className="p-2">
                   <input
                     type="checkbox"
                     checked={selectedSlugs.includes(article.slug)}
                     onChange={() => handleSelect(article.slug)}
-                    aria-label={`Select article ${article.title}`}
                   />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap max-w-xs">
-                  <div className="text-sm font-medium text-gray-900 truncate" title={article.title}>{article.title}</div>
-                  {article.subtitle && (
-                    <div className="text-sm text-gray-500 truncate" title={article.subtitle}>{article.subtitle}</div>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap max-w-xs">
-                  <div className="text-sm text-gray-700 truncate" title={(() => {
-                    if (!Array.isArray(article.categories) || article.categories.length === 0) return '';
-                    return article.categories.map(cat => typeof cat === 'object' ? cat.name : (categories.find(c => c.slug === cat || c.name === cat)?.name || cat)).join(', ');
-                  })()}>
-                    {Array.isArray(article.categories) && article.categories.length > 0
-                      ? (typeof article.categories[0] === 'object'
-                          ? article.categories[0].name
-                          : (categories.find(c => c.slug === article.categories[0] || c.name === article.categories[0])?.name || article.categories[0]))
-                      : <span className="text-gray-400 italic">None</span>}
+                <td className="p-2">
+                  <div className="truncate max-w-[300px]" title={article.title}>
+                    <Link
+                      href={`/admin/edit?slug=${article.slug}`}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      {article.title}
+                    </Link>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{article.meta?.author}</div>
+                <td className="p-2">
+                  {Array.isArray(article.categories)
+                    ? article.categories
+                        .map((cat) => (typeof cat === 'object' ? cat.name : cat))
+                        .join(', ')
+                    : article.categories}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium min-w-[220px]">
+                <td className="p-2">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    article.meta?.status === 'published' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {article.meta?.status || 'draft'}
+                  </span>
+                </td>
+                <td className="p-2">
+                  {article.meta?.publication_date
+                    ? new Date(article.meta.publication_date).toLocaleDateString()
+                    : 'No date'}
+                </td>
+                <td className="p-2">
                   <div className="flex gap-4 items-center">
                     <Link
                       href={`/admin/edit?slug=${article.slug}`}
-                      className="text-blue-600 hover:text-blue-900"
+                      className="text-blue-600 hover:text-blue-800"
                     >
                       Edit
                     </Link>
                     <Link
                       href={`/post/${article.slug}`}
-                      className="text-green-600 hover:text-green-900"
+                      className="text-green-600 hover:text-green-800"
                       target="_blank"
                     >
                       View
                     </Link>
                     <button
-                      type="button"
-                      className="text-red-600 hover:text-red-900 underline bg-transparent border-0 p-0 cursor-pointer"
                       onClick={() => handleDelete(article.slug)}
-                      aria-label={`Delete article ${article.title}`}
+                      className="text-red-600 hover:text-red-800"
                     >
                       Delete
                     </button>

@@ -52,7 +52,8 @@ export default function SportsPage() {
         );
         if (!res.ok) throw new Error("Failed to fetch articles");
         const data = await res.json();
-        const allArticles = Array.isArray(data) ? data : [];
+        // Filter out draft articles
+        const allArticles = Array.isArray(data) ? data.filter(article => article.meta?.status !== 'draft') : [];
         setArticles(allArticles);
         setTotalPages(Math.ceil(allArticles.length / ARTICLES_PER_PAGE));
       } catch (err) {

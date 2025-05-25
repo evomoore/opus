@@ -52,7 +52,10 @@ export default function HomePage() {
         if (!res.ok) throw new Error(`Failed to fetch ${category} articles`);
         const data = await res.json();
         const articles = Array.isArray(data) ? data : [];
-        return articles.slice(0, 6); // Ensure we only get 6 articles
+        // Filter out draft articles and ensure we only get 6 articles
+        return articles
+          .filter(article => article.meta?.status !== 'draft')
+          .slice(0, 6);
       } catch (err) {
         console.error(`Error fetching ${category} articles:`, err);
         return [];
