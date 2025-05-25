@@ -11,6 +11,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import '../../post/[slug]/post-content.css';
 import { Extension } from '@tiptap/core';
 import ListItem from '@tiptap/extension-list-item';
+import PasswordProtection from '@/components/PasswordProtection';
 
 // Custom extension to handle broken images
 const BrokenImageHandler = Extension.create({
@@ -826,8 +827,10 @@ function EditArticleContent() {
 
 export default function EditArticle() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <EditArticleContent />
-    </Suspense>
+    <PasswordProtection>
+      <Suspense fallback={<div>Loading...</div>}>
+        <EditArticleContent />
+      </Suspense>
+    </PasswordProtection>
   );
 } 

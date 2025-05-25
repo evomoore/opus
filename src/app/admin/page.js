@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import PasswordProtection from '@/components/PasswordProtection';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
 
@@ -229,245 +230,247 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <div className="flex gap-2">
+    <PasswordProtection>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+              onClick={() => fileInputRef.current && fileInputRef.current.click()}
+              aria-label="Import Article JSON"
+            >
+              Import
+            </button>
+            <input
+              type="file"
+              accept=".json,application/json"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={async (e) => {
+                setImportError(null);
+                setImportSuccess(null);
+                const file = e.target.files[0];
+                if (!file) return;
+                setImporting(true);
+                try {
+                  const text = await file.text();
+                  const data = JSON.parse(text);
+                  if (!data.article) throw new Error('JSON must have an "article" property');
+                  // Optionally: validate required fields here
+                  const res = await fetch(`${API_BASE_URL}/articles`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ article: data.article }),
+                  });
+                  if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.message || 'Failed to import article');
+                  }
+                  setImportSuccess('Article imported successfully!');
+                  // Optionally refresh articles list
+                  setArticles((prev) => [data.article, ...prev]);
+                } catch (err) {
+                  setImportError(err.message || 'Import failed.');
+                } finally {
+                  setImporting(false);
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }
+              }}
+              aria-label="Upload article JSON file"
+            />
+            <Link
+              href="/admin/edit"
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+            >
+              Create New Article
+            </Link>
+          </div>
+        </div>
+        <div className="mb-8 bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Note from the Editor</h2>
+          <div className="mb-4">
+            <textarea
+              value={editorNote}
+              onChange={(e) => setEditorNote(e.target.value)}
+              className="w-full h-32 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter the note from the editor..."
+            />
+          </div>
+          <div className="flex justify-between items-center">
+            <div>
+              {noteError && <p className="text-red-500 text-sm">{noteError}</p>}
+              {noteSuccess && <p className="text-green-500 text-sm">{noteSuccess}</p>}
+            </div>
+            <button
+              onClick={handleSaveNote}
+              disabled={isSavingNote}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
+            >
+              {isSavingNote ? 'Saving...' : 'Save Note'}
+            </button>
+          </div>
+        </div>
+        <div className="mb-4 flex items-center gap-4">
+          <label className="font-medium">Filter by Category:</label>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="p-2 border rounded"
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat._id || cat.slug} value={cat.slug}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+          <label className="font-medium">Sort by:</label>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            className="p-2 border rounded"
+          >
+            <option value="alpha">Alphabetical</option>
+            <option value="date">Publication Date</option>
+          </select>
+        </div>
+        {selectedSlugs.length > 0 && (
           <button
             type="button"
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
-            onClick={() => fileInputRef.current && fileInputRef.current.click()}
-            aria-label="Import Article JSON"
+            className="mb-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+            onClick={handleDeleteSelected}
           >
-            Import
+            Delete Selected ({selectedSlugs.length})
           </button>
-          <input
-            type="file"
-            accept=".json,application/json"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={async (e) => {
-              setImportError(null);
-              setImportSuccess(null);
-              const file = e.target.files[0];
-              if (!file) return;
-              setImporting(true);
-              try {
-                const text = await file.text();
-                const data = JSON.parse(text);
-                if (!data.article) throw new Error('JSON must have an "article" property');
-                // Optionally: validate required fields here
-                const res = await fetch(`${API_BASE_URL}/articles`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ article: data.article }),
-                });
-                if (!res.ok) {
-                  const errData = await res.json().catch(() => ({}));
-                  throw new Error(errData.message || 'Failed to import article');
-                }
-                setImportSuccess('Article imported successfully!');
-                // Optionally refresh articles list
-                setArticles((prev) => [data.article, ...prev]);
-              } catch (err) {
-                setImportError(err.message || 'Import failed.');
-              } finally {
-                setImporting(false);
-                if (fileInputRef.current) fileInputRef.current.value = '';
-              }
-            }}
-            aria-label="Upload article JSON file"
-          />
-          <Link
-            href="/admin/edit"
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
-          >
-            Create New Article
-          </Link>
-        </div>
-      </div>
-      <div className="mb-8 bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4">Note from the Editor</h2>
-        <div className="mb-4">
-          <textarea
-            value={editorNote}
-            onChange={(e) => setEditorNote(e.target.value)}
-            className="w-full h-32 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter the note from the editor..."
-          />
-        </div>
-        <div className="flex justify-between items-center">
-          <div>
-            {noteError && <p className="text-red-500 text-sm">{noteError}</p>}
-            {noteSuccess && <p className="text-green-500 text-sm">{noteSuccess}</p>}
+        )}
+        {importing && <div className="text-blue-500 mb-2">Importing article...</div>}
+        {importError && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-600">
+            {importError}
           </div>
-          <button
-            onClick={handleSaveNote}
-            disabled={isSavingNote}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
-          >
-            {isSavingNote ? 'Saving...' : 'Save Note'}
-          </button>
-        </div>
-      </div>
-      <div className="mb-4 flex items-center gap-4">
-        <label className="font-medium">Filter by Category:</label>
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="p-2 border rounded"
-        >
-          <option value="">All Categories</option>
-          {categories.map((cat) => (
-            <option key={cat._id || cat.slug} value={cat.slug}>
-              {cat.name}
-            </option>
-          ))}
-        </select>
-        <label className="font-medium">Sort by:</label>
-        <select
-          value={sortOrder}
-          onChange={(e) => setSortOrder(e.target.value)}
-          className="p-2 border rounded"
-        >
-          <option value="alpha">Alphabetical</option>
-          <option value="date">Publication Date</option>
-        </select>
-      </div>
-      {selectedSlugs.length > 0 && (
-        <button
-          type="button"
-          className="mb-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
-          onClick={handleDeleteSelected}
-        >
-          Delete Selected ({selectedSlugs.length})
-        </button>
-      )}
-      {importing && <div className="text-blue-500 mb-2">Importing article...</div>}
-      {importError && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-600">
-          {importError}
-        </div>
-      )}
-      {importSuccess && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded text-green-600">
-          {importSuccess}
-        </div>
-      )}
-      {deleteError && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-600">
-          {deleteError}
-        </div>
-      )}
+        )}
+        {importSuccess && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded text-green-600">
+            {importSuccess}
+          </div>
+        )}
+        {deleteError && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-600">
+            {deleteError}
+          </div>
+        )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="p-2 text-left w-8">
-                <input
-                  type="checkbox"
-                  checked={selectedSlugs.length === articles.length}
-                  onChange={handleSelectAll}
-                  className="mr-2"
-                />
-              </th>
-              <th className="p-2 text-left w-1/4">Title</th>
-              <th className="p-2 text-left w-1/5">Category</th>
-              <th className="p-2 text-left w-24">Status</th>
-              <th className="p-2 text-left w-32">Date</th>
-              <th className="p-2 text-left w-48">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedArticles.map((article) => (
-              <tr key={article.slug} className="border-b hover:bg-gray-50">
-                <td className="p-2">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="p-2 text-left w-8">
                   <input
                     type="checkbox"
-                    checked={selectedSlugs.includes(article.slug)}
-                    onChange={() => handleSelect(article.slug)}
+                    checked={selectedSlugs.length === articles.length}
+                    onChange={handleSelectAll}
+                    className="mr-2"
                   />
-                </td>
-                <td className="p-2">
-                  <div className="truncate max-w-[300px]" title={article.title}>
-                    <Link
-                      href={`/admin/edit?slug=${article.slug}`}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      {article.title}
-                    </Link>
-                  </div>
-                </td>
-                <td className="p-2">
-                  {Array.isArray(article.categories)
-                    ? article.categories
-                        .map((cat) => (typeof cat === 'object' ? cat.name : cat))
-                        .join(', ')
-                    : article.categories}
-                </td>
-                <td className="p-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    article.meta?.status === 'published' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {article.meta?.status || 'draft'}
-                  </span>
-                </td>
-                <td className="p-2">
-                  {article.meta?.publication_date
-                    ? new Date(article.meta.publication_date).toLocaleDateString()
-                    : 'No date'}
-                </td>
-                <td className="p-2">
-                  <div className="flex gap-4 items-center">
-                    <Link
-                      href={`/admin/edit?slug=${article.slug}`}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      Edit
-                    </Link>
-                    <Link
-                      href={`/post/${article.slug}`}
-                      className="text-green-600 hover:text-green-800"
-                      target="_blank"
-                    >
-                      View
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(article.slug)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
+                </th>
+                <th className="p-2 text-left w-1/4">Title</th>
+                <th className="p-2 text-left w-1/5">Category</th>
+                <th className="p-2 text-left w-24">Status</th>
+                <th className="p-2 text-left w-32">Date</th>
+                <th className="p-2 text-left w-48">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2 mt-6">
-          <button
-            className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </button>
-          <span className="mx-2">Page {currentPage} of {totalPages}</span>
-          <button
-            className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </button>
+            </thead>
+            <tbody>
+              {paginatedArticles.map((article) => (
+                <tr key={article.slug} className="border-b hover:bg-gray-50">
+                  <td className="p-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedSlugs.includes(article.slug)}
+                      onChange={() => handleSelect(article.slug)}
+                    />
+                  </td>
+                  <td className="p-2">
+                    <div className="truncate max-w-[300px]" title={article.title}>
+                      <Link
+                        href={`/admin/edit?slug=${article.slug}`}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        {article.title}
+                      </Link>
+                    </div>
+                  </td>
+                  <td className="p-2">
+                    {Array.isArray(article.categories)
+                      ? article.categories
+                          .map((cat) => (typeof cat === 'object' ? cat.name : cat))
+                          .join(', ')
+                      : article.categories}
+                  </td>
+                  <td className="p-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      article.meta?.status === 'published' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {article.meta?.status || 'draft'}
+                    </span>
+                  </td>
+                  <td className="p-2">
+                    {article.meta?.publication_date
+                      ? new Date(article.meta.publication_date).toLocaleDateString()
+                      : 'No date'}
+                  </td>
+                  <td className="p-2">
+                    <div className="flex gap-4 items-center">
+                      <Link
+                        href={`/admin/edit?slug=${article.slug}`}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        Edit
+                      </Link>
+                      <Link
+                        href={`/post/${article.slug}`}
+                        className="text-green-600 hover:text-green-800"
+                        target="_blank"
+                      >
+                        View
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(article.slug)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
-    </div>
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-6">
+            <button
+              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </button>
+            <span className="mx-2">Page {currentPage} of {totalPages}</span>
+            <button
+              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
+    </PasswordProtection>
   );
 } 
