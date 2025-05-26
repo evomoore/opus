@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  images: {
+    domains: ['res.cloudinary.com', 'snackmachine.onrender.com'],
+  },
 }
 
 module.exports = nextConfig 

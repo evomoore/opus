@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import PasswordProtection from '@/components/PasswordProtection';
+import CategoryManagementModal from '@/components/CategoryManagementModal';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
 
@@ -25,6 +26,7 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState('alpha'); // default to alphabetical
   const ARTICLES_PER_PAGE = 20;
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -208,6 +210,39 @@ export default function AdminDashboard() {
   // Reset to page 1 if filter or sort changes
   useEffect(() => { setCurrentPage(1); }, [categoryFilter, sortOrder]);
 
+  const handleFileUpload = async (e) => {
+    setImportError(null);
+    setImportSuccess(null);
+    const file = e.target.files[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.article) throw new Error('JSON must have an "article" property');
+      
+      const res = await fetch(`${API_BASE_URL}/articles`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ article: data.article }),
+      });
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to import article');
+      }
+      
+      setImportSuccess('Article imported successfully!');
+      // Refresh articles list
+      setArticles((prev) => [data.article, ...prev]);
+    } catch (err) {
+      setImportError(err.message || 'Import failed.');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -234,58 +269,32 @@ export default function AdminDashboard() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <div className="flex gap-2">
+          <div className="flex gap-4">
             <button
-              type="button"
-              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
-              onClick={() => fileInputRef.current && fileInputRef.current.click()}
-              aria-label="Import Article JSON"
+              onClick={() => setIsCategoryModalOpen(true)}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
-              Import
+              Manage Categories
             </button>
-            <input
-              type="file"
-              accept=".json,application/json"
-              ref={fileInputRef}
-              className="hidden"
-              onChange={async (e) => {
-                setImportError(null);
-                setImportSuccess(null);
-                const file = e.target.files[0];
-                if (!file) return;
-                setImporting(true);
-                try {
-                  const text = await file.text();
-                  const data = JSON.parse(text);
-                  if (!data.article) throw new Error('JSON must have an "article" property');
-                  // Optionally: validate required fields here
-                  const res = await fetch(`${API_BASE_URL}/articles`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ article: data.article }),
-                  });
-                  if (!res.ok) {
-                    const errData = await res.json().catch(() => ({}));
-                    throw new Error(errData.message || 'Failed to import article');
-                  }
-                  setImportSuccess('Article imported successfully!');
-                  // Optionally refresh articles list
-                  setArticles((prev) => [data.article, ...prev]);
-                } catch (err) {
-                  setImportError(err.message || 'Import failed.');
-                } finally {
-                  setImporting(false);
-                  if (fileInputRef.current) fileInputRef.current.value = '';
-                }
-              }}
-              aria-label="Upload article JSON file"
-            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              Import Articles
+            </button>
             <Link
               href="/admin/edit"
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
               Create New Article
             </Link>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept=".json"
+              className="hidden"
+            />
           </div>
         </div>
         <div className="mb-8 bg-white rounded-lg shadow p-6">
@@ -470,6 +479,12 @@ export default function AdminDashboard() {
             </button>
           </div>
         )}
+
+        {/* Category Management Modal */}
+        <CategoryManagementModal
+          isOpen={isCategoryModalOpen}
+          onClose={() => setIsCategoryModalOpen(false)}
+        />
       </div>
     </PasswordProtection>
   );

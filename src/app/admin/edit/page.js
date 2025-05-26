@@ -254,7 +254,7 @@ function EditArticleContent() {
         console.error(`Server error. Status: ${response.status} ${response.statusText}`);
         let errorDetail = 'Failed to save article due to a server error.';
         try {
-          const errorData = await response.json();
+        const errorData = await response.json();
           console.error('Server error response (JSON):', errorData);
           if (errorData && typeof errorData === 'object') {
             errorDetail = errorData.message || errorData.error || errorData.detail || JSON.stringify(errorData);
@@ -812,9 +812,9 @@ function EditArticleContent() {
 export default function EditArticle() {
   return (
     <PasswordProtection>
-      <Suspense fallback={<div>Loading...</div>}>
-        <EditArticleContent />
-      </Suspense>
+    <Suspense fallback={<div>Loading...</div>}>
+      <EditArticleContent />
+    </Suspense>
     </PasswordProtection>
   );
 } 

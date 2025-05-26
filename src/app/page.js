@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import ArticleCard from '@/components/ArticleCard';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || "https://snackmachine.onrender.com/api";
 const ARTICLES_PER_SECTION = 6;
@@ -30,6 +31,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editorNote, setEditorNote] = useState('');
+  const [categoryDefaultImages, setCategoryDefaultImages] = useState({});
 
   // Fetch categories for nav
   useEffect(() => {
@@ -37,7 +39,17 @@ export default function HomePage() {
       try {
         const res = await fetch(`${API_BASE_URL}/categories`);
         const data = await res.json();
-        setCategories(Array.isArray(data) ? data : data.categories || []);
+        const categoriesData = Array.isArray(data) ? data : data.categories || [];
+        setCategories(categoriesData);
+        
+        // Create a map of category slugs to their default images
+        const defaultImages = {};
+        categoriesData.forEach(category => {
+          if (category.defaultImage?.url) {
+            defaultImages[category.slug] = category.defaultImage.url;
+          }
+        });
+        setCategoryDefaultImages(defaultImages);
       } catch {
         setCategories([]);
       }
@@ -62,7 +74,7 @@ export default function HomePage() {
     fetchEditorNote();
   }, []);
 
-  // Fetch latest articles for each section (adding this comment in)
+  // Fetch latest articles for each section
   useEffect(() => {
     const fetchSectionArticles = async (category) => {
       try {
@@ -110,15 +122,6 @@ export default function HomePage() {
   }, []);
 
   const renderSection = (title, articles, categorySlug) => {
-    // Define default images for each category
-    const defaultImages = {
-      'book-reviews': 'https://res.cloudinary.com/phonetag/image/upload/v1747073407/default-images/wnnfjreg3mnys258nbdg.png',
-      'humor': 'https://res.cloudinary.com/phonetag/image/upload/v1747356428/default-images/i05vwkjzgj8chahtqkz3.png',
-      'mad': 'https://res.cloudinary.com/phonetag/image/upload/v1747421822/default-images/u1rcp0ej5urz60ce0qj2.png',
-      'snacks': 'https://res.cloudinary.com/phonetag/image/upload/v1748047004/default-images/iuhveytvdb6dytdhztsc.png',
-      'movie-reviews': 'https://res.cloudinary.com/phonetag/image/upload/v1748045157/default-images/ujxndspocflqkqlkcx1o.png'
-    };
-
     return (
       <section className="mb-12">
         <div className="flex items-center justify-between mb-4">
@@ -130,39 +133,13 @@ export default function HomePage() {
             View all →
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {articles.map((article) => (
-            <Link
+            <ArticleCard
               key={article.slug}
-              href={`/post/${article.slug}`}
-              className="block border rounded-lg shadow hover:shadow-lg transition overflow-hidden bg-white group"
-            >
-              {article.media?.featured_image?.url ? (
-                <img
-                  src={article.media.featured_image.url}
-                  alt={article.media.featured_image.alt || article.title}
-                  className="w-full h-40 object-cover group-hover:scale-105 transition-transform"
-                />
-              ) : (
-                <img
-                  src={defaultImages[categorySlug]}
-                  alt="Default article cover"
-                  className="w-full h-40 object-cover group-hover:scale-105 transition-transform opacity-60"
-                />
-              )}
-              <div className="p-3">
-                <h3 className="text-base font-semibold mb-1 truncate" title={article.title}>{article.title}</h3>
-                {article.subtitle && (
-                  <div className="text-gray-500 text-sm mb-1 truncate" title={article.subtitle}>{article.subtitle}</div>
-                )}
-                <div className="text-xs text-gray-400">
-                  {article.meta?.author && <span>By {article.meta.author}</span>}
-                  {article.meta?.publication_date && (
-                    <span> &middot; {new Date(article.meta.publication_date).toLocaleDateString()}</span>
-                  )}
-                </div>
-              </div>
-            </Link>
+              article={article}
+              categoryDefaultImage={categoryDefaultImages[categorySlug]}
+            />
           ))}
         </div>
       </section>

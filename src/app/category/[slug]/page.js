@@ -1,9 +1,10 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import ArticleCard from '@/components/ArticleCard';
+import { API_BASE_URL } from '@/lib/constants';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || "https://snackmachine.onrender.com/api";
 const ARTICLES_PER_PAGE = 15;
 
 function HeaderNav({ categories, currentCategory }) {
@@ -18,68 +19,87 @@ function HeaderNav({ categories, currentCategory }) {
   );
 }
 
-export default function MadPage() {
-  const [categories, setCategories] = useState([]);
+export default function CategoryPage({ params }) {
   const [articles, setArticles] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sortOrder, setSortOrder] = useState('date');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [sortOrder, setSortOrder] = useState('alpha'); // default to alphabetical
+  const [categoryName, setCategoryName] = useState('');
+  const [categoryDefaultImage, setCategoryDefaultImage] = useState(null);
 
-  // Fetch categories for nav
+  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/categories`);
-        const data = await res.json();
+        const response = await fetch(`${API_BASE_URL}/categories`);
+        if (!response.ok) throw new Error('Failed to fetch categories');
+        const data = await response.json();
         setCategories(Array.isArray(data) ? data : data.categories || []);
-      } catch {
-        setCategories([]);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
       }
     };
     fetchCategories();
   }, []);
 
-  // Fetch all mad articles (no pagination on API)
+  // Fetch category and articles
   useEffect(() => {
-    setIsLoading(true);
-    setError(null);
-    const fetchArticles = async () => {
+    const fetchCategoryAndArticles = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const res = await fetch(
-          `${API_BASE_URL}/articles?category=Mad`
+        // First fetch the category to get its name and default image
+        const categoryResponse = await fetch(`${API_BASE_URL}/categories/${params.slug}`);
+        if (!categoryResponse.ok) {
+          console.error('Category fetch failed:', await categoryResponse.text());
+          throw new Error('Failed to fetch category');
+        }
+        const categoryData = await categoryResponse.json();
+        console.log('Category data:', categoryData);
+        setCategoryName(categoryData.name);
+        setCategoryDefaultImage(categoryData.defaultImage?.url);
+
+        // Fetch articles for this category (no pagination on API)
+        const articlesResponse = await fetch(
+          `${API_BASE_URL}/articles?category=${encodeURIComponent(categoryData.name)}`
         );
-        if (!res.ok) throw new Error("Failed to fetch articles");
-        const data = await res.json();
+        if (!articlesResponse.ok) {
+          console.error('Articles fetch failed:', await articlesResponse.text());
+          throw new Error('Failed to fetch articles');
+        }
+        const data = await articlesResponse.json();
         // Filter out draft articles
         const allArticles = Array.isArray(data) ? data.filter(article => article.meta?.status !== 'draft') : [];
+        console.log('Fetched articles:', allArticles.length);
         setArticles(allArticles);
         setTotalPages(Math.ceil(allArticles.length / ARTICLES_PER_PAGE));
       } catch (err) {
-        setError("Failed to load mad articles");
+        console.error('Error in fetchCategoryAndArticles:', err);
+        setError(err.message);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
-    fetchArticles();
-  }, []);
 
-  // Sort articles before paginating
+    fetchCategoryAndArticles();
+  }, [params.slug]);
+
+  // Sort articles based on sortOrder
   const sortedArticles = [...articles].sort((a, b) => {
-    if (sortOrder === 'alpha') {
+    if (sortOrder === 'date') {
+      return new Date(b.meta?.publication_date || 0) - new Date(a.meta?.publication_date || 0);
+    } else if (sortOrder === 'alpha') {
       return a.title.localeCompare(b.title);
-    } else {
-      // Default: sort by publication date, newest first
-      const dateA = new Date(a.meta?.publication_date || a.createdAt || 0);
-      const dateB = new Date(b.meta?.publication_date || b.createdAt || 0);
-      return dateB - dateA;
     }
+    return 0;
   });
-  const paginatedArticles = sortedArticles.slice(
-    (currentPage - 1) * ARTICLES_PER_PAGE,
-    currentPage * ARTICLES_PER_PAGE
-  );
+
+  // Get paginated articles
+  const startIndex = (currentPage - 1) * ARTICLES_PER_PAGE;
+  const paginatedArticles = sortedArticles.slice(startIndex, startIndex + ARTICLES_PER_PAGE);
 
   // Compute available first letters from sorted articles
   const alphaLetters = Array.from(new Set(sortedArticles.map(a => a.title[0]?.toUpperCase()).filter(l => l && /[A-Z]/.test(l)))).sort();
@@ -92,14 +112,41 @@ export default function MadPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white">
+        <HeaderNav categories={categories} currentCategory={params.slug} />
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold">Loading articles...</h2>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white">
+        <HeaderNav categories={categories} currentCategory={params.slug} />
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-red-600 mb-4">Error Loading Articles</h2>
+            <p className="text-gray-600">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white">
-      <HeaderNav categories={categories} currentCategory="mad" />
+      <HeaderNav categories={categories} currentCategory={params.slug} />
       {categories.length > 0 && (
         <nav className="w-full bg-gray-50 border-b mb-2">
           <ul className="flex flex-wrap gap-4 px-6 py-3 max-w-4xl mx-auto">
             {categories.map((cat) => {
-              const isActive = "mad" === cat.slug;
+              const isActive = params.slug === cat.slug;
               return (
                 <li key={cat._id || cat.slug}>
                   <Link
@@ -126,10 +173,10 @@ export default function MadPage() {
               <Link href="/" className="hover:underline text-gray-600">Home</Link>
             </li>
             <li className="mx-1">/</li>
-            <li className="truncate text-gray-800 font-semibold" aria-current="page">Mad</li>
+            <li className="truncate text-gray-800 font-semibold" aria-current="page">{categoryName}</li>
           </ol>
         </nav>
-        <h1 className="text-3xl font-bold mb-4">Mad</h1>
+        <h1 className="text-3xl font-bold mb-4">{categoryName}</h1>
         {/* Sort Dropdown and Top Pagination */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -184,69 +231,46 @@ export default function MadPage() {
             })}
           </div>
         )}
-        {isLoading ? (
-          <div className="text-center text-gray-500 py-12">Loading mad articles...</div>
-        ) : error ? (
-          <div className="text-center text-red-500 py-12">{error}</div>
+
+        {articles.length === 0 ? (
+          <div className="text-center py-12">
+            <h2 className="text-xl font-semibold text-gray-600">No articles found in this category</h2>
+          </div>
         ) : (
-          <>
-            {/* Grid of mad articles */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 max-w-4xl mx-auto">
-              {paginatedArticles.map((article) => (
-                <Link
-                  key={article.slug}
-                  href={`/post/${article.slug}`}
-                  className="block border rounded-lg shadow hover:shadow-lg transition overflow-hidden bg-white group"
-                >
-                  {article.media?.featured_image?.url ? (
-                    <img
-                      src={article.media.featured_image.url}
-                      alt={article.media.featured_image.alt || article.title}
-                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform"
-                    />
-                  ) : (
-                    <img
-                      src="https://res.cloudinary.com/phonetag/image/upload/v1747421822/default-images/u1rcp0ej5urz60ce0qj2.png"
-                      alt="Default mad article cover"
-                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform opacity-60"
-                    />
-                  )}
-                  <div className="p-4">
-                    <h2 className="text-lg font-semibold mb-1 truncate" title={article.title}>{article.title}</h2>
-                    {article.subtitle && (
-                      <div className="text-gray-500 text-sm mb-2 truncate" title={article.subtitle}>{article.subtitle}</div>
-                    )}
-                    <div className="text-xs text-gray-400 mb-1">
-                      {article.meta?.author && <span>By {article.meta.author}</span>}
-                      {article.meta?.publication_date && (
-                        <span> &middot; {new Date(article.meta.publication_date).toLocaleDateString()}</span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            {/* Bottom Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mb-10">
-                <button
-                  className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-                <span className="mx-2">Page {currentPage} of {totalPages}</span>
-                <button
-                  className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {paginatedArticles.map((article) => (
+              <ArticleCard
+                key={article.slug}
+                article={article}
+                categoryDefaultImage={categoryDefaultImage}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Bottom Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-8 flex justify-center">
+            <nav className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-gray-700">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </nav>
+          </div>
         )}
       </main>
     </div>

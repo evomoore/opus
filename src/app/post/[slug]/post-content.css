@@ -32,7 +32,7 @@
 .prose ol > p {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
-}
+} 
 
 /* Styling for broken images in the editor */
 .ProseMirror img.broken-image, /* Increased specificity */
