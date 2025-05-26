@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-const ADMIN_PASSWORD = 'whymeworry';
+const ADMIN_PASSWORD = 'whatmeworry';
 
 export default function PasswordProtection({ children }) {
   const [password, setPassword] = useState('');

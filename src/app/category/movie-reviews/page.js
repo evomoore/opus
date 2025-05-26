@@ -47,13 +47,32 @@ export default function MovieReviewsPage() {
     setError(null);
     const fetchArticles = async () => {
       try {
-        const res = await fetch(
-          `${API_BASE_URL}/articles?category=Movie Reviews`
-        );
-        if (!res.ok) throw new Error("Failed to fetch articles");
-        const data = await res.json();
-        // Filter out draft articles
-        const allArticles = Array.isArray(data) ? data.filter(article => article.meta?.status !== 'draft') : [];
+        // Fetch articles with both category slug and name
+        const [slugRes, nameRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/articles?category=movie-reviews`),
+          fetch(`${API_BASE_URL}/articles?category=Movie Reviews`)
+        ]);
+        
+        if (!slugRes.ok || !nameRes.ok) throw new Error("Failed to fetch articles");
+        
+        const [slugData, nameData] = await Promise.all([
+          slugRes.json(),
+          nameRes.json()
+        ]);
+
+        // Combine and deduplicate articles
+        const slugArticles = Array.isArray(slugData) ? slugData : [];
+        const nameArticles = Array.isArray(nameData) ? nameData : [];
+        
+        // Create a Set of article slugs to deduplicate
+        const uniqueSlugs = new Set();
+        const allArticles = [...slugArticles, ...nameArticles]
+          .filter(article => {
+            if (uniqueSlugs.has(article.slug)) return false;
+            uniqueSlugs.add(article.slug);
+            return article.meta?.status !== 'draft';
+          });
+
         setArticles(allArticles);
         setTotalPages(Math.ceil(allArticles.length / ARTICLES_PER_PAGE));
       } catch (err) {
