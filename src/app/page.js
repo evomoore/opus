@@ -62,7 +62,7 @@ export default function HomePage() {
     fetchEditorNote();
   }, []);
 
-  // Fetch latest articles for each section
+  // Fetch latest articles for each section (adding this comment in)
   useEffect(() => {
     const fetchSectionArticles = async (category) => {
       try {
