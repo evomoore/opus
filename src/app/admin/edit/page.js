@@ -67,7 +67,6 @@ function EditArticleContent() {
   const [author, setAuthor] = useState('');
   const [publicationDate, setPublicationDate] = useState('');
   const [publicationStatus, setPublicationStatus] = useState('published');
-  const [tags, setTags] = useState('');
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -159,7 +158,6 @@ function EditArticleContent() {
         const pubDate = article.meta?.publication_date;
         setPublicationDate(pubDate ? new Date(pubDate).toISOString().split('T')[0] : '');
         setPublicationStatus(article.meta?.status ?? 'published');
-        setTags(Array.isArray(article.tags) ? article.tags.join(', ') : '');
         setSelectedCategory(
           Array.isArray(article.categories) && article.categories[0]
             ? article.categories[0].slug || article.categories[0]
@@ -236,7 +234,6 @@ function EditArticleContent() {
               title: title
             } : null
           },
-          tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
           categories: selectedCategory ? [selectedCategory] : [],
         }
       };
@@ -468,6 +465,74 @@ function EditArticleContent() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium mb-1">Category</label>
+            {categoriesLoading ? (
+              <div className="text-gray-400 text-sm">Loading categories...</div>
+            ) : categoriesError ? (
+              <div className="text-red-500 text-sm">{categoriesError}</div>
+            ) : (
+              <>
+                <select
+                  className="w-full p-2 border rounded"
+                  value={selectedCategory}
+                  onChange={e => setSelectedCategory(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>Select a category</option>
+                  {categories.map((cat) => (
+                    <option key={cat._id || cat.slug} value={cat.slug}>{cat.name}</option>
+                  ))}
+                  <option value="__new__">+ Create new category</option>
+                </select>
+                {selectedCategory === '__new__' && (
+                  <div className="mt-2 flex gap-2 items-center">
+                    <input
+                      type="text"
+                      className="p-2 border rounded flex-1"
+                      placeholder="New category name"
+                      value={newCategoryName}
+                      onChange={e => setNewCategoryName(e.target.value)}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      className="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 transition-colors"
+                      disabled={creatingCategory || !newCategoryName.trim()}
+                      onClick={async () => {
+                        setCreatingCategory(true);
+                        setCreateCategoryError(null);
+                        try {
+                          const res = await fetch(`${API_BASE_URL}/categories`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              name: newCategoryName.trim(),
+                              slug: newCategoryName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')
+                            }),
+                          });
+                          if (!res.ok) throw new Error('Failed to create category');
+                          const newCat = await res.json();
+                          // Add new category to list and select it
+                          setCategories(prev => [...prev, newCat]);
+                          setSelectedCategory(newCat.slug);
+                          setNewCategoryName('');
+                        } catch (err) {
+                          setCreateCategoryError('Could not create category');
+                        } finally {
+                          setCreatingCategory(false);
+                        }
+                      }}
+                    >
+                      {creatingCategory ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                )}
+                {createCategoryError && <div className="text-red-500 text-sm mt-1">{createCategoryError}</div>}
+              </>
+            )}
+          </div>
+
+          <div>
             <label className="block text-sm font-medium mb-1">Publication Date</label>
             <input
               type="date"
@@ -554,87 +619,6 @@ function EditArticleContent() {
               />
             )}
             {uploadError && <div className="text-red-500 text-sm mb-2">{uploadError}</div>}
-          </div>
-        </div>
-
-        {/* Tags and Categories */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Tags (comma-separated)</label>
-            <input
-              type="text"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              className="w-full p-2 border rounded"
-              placeholder="Tag1, Tag2, Tag3"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Category</label>
-            {categoriesLoading ? (
-              <div className="text-gray-400 text-sm">Loading categories...</div>
-            ) : categoriesError ? (
-              <div className="text-red-500 text-sm">{categoriesError}</div>
-            ) : (
-              <>
-                <select
-                  className="w-full p-2 border rounded"
-                  value={selectedCategory}
-                  onChange={e => setSelectedCategory(e.target.value)}
-                  required
-                >
-                  <option value="" disabled>Select a category</option>
-                  {categories.map((cat) => (
-                    <option key={cat._id || cat.slug} value={cat.slug}>{cat.name}</option>
-                  ))}
-                  <option value="__new__">+ Create new category</option>
-                </select>
-                {selectedCategory === '__new__' && (
-                  <div className="mt-2 flex gap-2 items-center">
-                    <input
-                      type="text"
-                      className="p-2 border rounded flex-1"
-                      placeholder="New category name"
-                      value={newCategoryName}
-                      onChange={e => setNewCategoryName(e.target.value)}
-                      autoFocus
-                    />
-                    <button
-                      type="button"
-                      className="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 transition-colors"
-                      disabled={creatingCategory || !newCategoryName.trim()}
-                      onClick={async () => {
-                        setCreatingCategory(true);
-                        setCreateCategoryError(null);
-                        try {
-                          const res = await fetch(`${API_BASE_URL}/categories`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              name: newCategoryName.trim(),
-                              slug: newCategoryName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')
-                            }),
-                          });
-                          if (!res.ok) throw new Error('Failed to create category');
-                          const newCat = await res.json();
-                          // Add new category to list and select it
-                          setCategories(prev => [...prev, newCat]);
-                          setSelectedCategory(newCat.slug);
-                          setNewCategoryName('');
-                        } catch (err) {
-                          setCreateCategoryError('Could not create category');
-                        } finally {
-                          setCreatingCategory(false);
-                        }
-                      }}
-                    >
-                      {creatingCategory ? 'Saving...' : 'Save'}
-                    </button>
-                  </div>
-                )}
-                {createCategoryError && <div className="text-red-500 text-sm mt-1">{createCategoryError}</div>}
-              </>
-            )}
           </div>
         </div>
 

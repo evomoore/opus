@@ -4,8 +4,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'Opus',
-  description: 'A modern publishing platform',
+  title: 'Mind Snack Books - Thoughts and Musings by Jerry Moore',
+  description: 'Book reviews, movie reviews, and more',
 };
 
 export default function RootLayout({ children }) {

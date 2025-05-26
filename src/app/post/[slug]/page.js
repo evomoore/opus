@@ -198,24 +198,8 @@ export default function PostPage({ params }) {
         />
 
         {/* Tags and Categories */}
-        {(article.tags?.length > 0 || article.categories?.length > 0) && (
+        {article.categories?.length > 0 && (
           <footer className="mt-8 pt-8 border-t">
-            {article.tags?.length > 0 && (
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-600 mb-2">Tags</h3>
-                <div className="flex flex-wrap gap-2">
-                  {article.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {article.categories?.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-gray-600 mb-2">Categories</h3>
