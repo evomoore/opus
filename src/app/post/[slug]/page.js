@@ -178,17 +178,6 @@ export default function PostPage({ params }) {
               </span>
             )}
           </div>
-
-          {/* Featured Image */}
-          {article.media?.featured_image?.url && (
-            <div className="mb-8">
-              <img
-                src={article.media.featured_image.url}
-                alt={article.media.featured_image.alt || article.title}
-                className="w-full h-auto rounded-lg shadow-lg"
-              />
-            </div>
-          )}
         </header>
 
         {/* Article Content */}
