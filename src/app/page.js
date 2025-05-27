@@ -13,7 +13,7 @@ function HeaderNav({ categories, currentCategory }) {
     <header className="w-full bg-gray-50 border-b mb-0">
       <div className="flex items-center max-w-4xl mx-auto px-6 py-6 gap-6">
         <Link href="/" className="flex items-center gap-5 group" aria-label="Mindsnack Books Home">
-          <Image
+        <Image
             src="https://res.cloudinary.com/phonetag/image/upload/v1748312015/default-images/image-2025-05-27T00-11-02-599Z_yt3ssv.jpg"
             alt="Mindsnack Books Logo"
             width={90}
@@ -134,7 +134,7 @@ export default function HomePage() {
       <section className="mb-12">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold">{title}</h2>
-          <Link 
+          <Link
             href={`/category/${categorySlug}`}
             className="text-blue-600 hover:text-blue-800 text-sm font-medium"
           >

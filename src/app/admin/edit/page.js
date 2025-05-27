@@ -59,10 +59,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackm
 function EditArticleContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const slug = searchParams.get('slug');
+  const urlSlug = searchParams.get('slug');
   
   // State declarations
   const [title, setTitle] = useState('');
+  const [customSlug, setCustomSlug] = useState('');
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [subtitle, setSubtitle] = useState('');
   const [author, setAuthor] = useState('');
   const [publicationDate, setPublicationDate] = useState('');
@@ -128,13 +130,13 @@ function EditArticleContent() {
 
   useEffect(() => {
     const fetchArticle = async () => {
-      if (!slug) return;
+      if (!urlSlug) return;
       
       setIsLoading(true);
       setError(null);
       
       try {
-        const url = `${API_BASE_URL}/articles/${slug}`;
+        const url = `${API_BASE_URL}/articles/${urlSlug}`;
         console.log('Fetching article from:', url);
         
         const response = await fetch(url);
@@ -152,6 +154,7 @@ function EditArticleContent() {
         
         // Set form fields with null checks
         setTitle(article.title ?? '');
+        setCustomSlug(article.slug ?? '');
         setSubtitle(article.subtitle ?? '');
         setAuthor(article.meta?.author ?? '');
         // Format the publication date for the input field
@@ -178,7 +181,7 @@ function EditArticleContent() {
     };
 
     fetchArticle();
-  }, [slug, editor]);
+  }, [urlSlug, editor]);
 
   useEffect(() => {
     // Fetch categories for dropdown
@@ -211,6 +214,17 @@ function EditArticleContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHtmlMode]);
 
+  // Auto-populate slug from title when creating a new article
+  useEffect(() => {
+    if (!urlSlug && !slugManuallyEdited) {
+      const generatedSlug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      setCustomSlug(generatedSlug);
+    }
+  }, [title, urlSlug, slugManuallyEdited]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -220,7 +234,7 @@ function EditArticleContent() {
         article: {
           title,
           subtitle,
-          slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          slug: customSlug,
           meta: {
             publication_date: publicationDate,
             author,
@@ -238,11 +252,11 @@ function EditArticleContent() {
         }
       };
 
-      const url = `${API_BASE_URL}/articles${slug ? `/${slug}` : ''}`;
+      const url = `${API_BASE_URL}/articles${urlSlug ? `/${urlSlug}` : ''}`;
       console.log('Submitting article to:', url);
       
       const response = await fetch(url, {
-        method: slug ? 'PUT' : 'POST',
+        method: urlSlug ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -283,12 +297,17 @@ function EditArticleContent() {
 
       const result = await response.json();
       
-      if (!slug) {
+      if (!urlSlug) {
         // After creating a new article, redirect to edit page with the new slug
         router.push(`/admin/edit?slug=${result.slug}`);
       } else {
-        // For existing articles, just show success message
-        alert('Article updated successfully!');
+        // For existing articles, if the slug changed, redirect to the new slug
+        if (result.slug && result.slug !== urlSlug) {
+          router.push(`/admin/edit?slug=${result.slug}`);
+        } else {
+          // For existing articles, just show success message
+          alert('Article updated successfully!');
+        }
       }
     } catch (error) {
       console.error('Error saving article (handleSubmit catch block):', error);
@@ -423,23 +442,41 @@ function EditArticleContent() {
         </a>
       </div>
       <h1 className="text-3xl font-bold mb-8">
-        {slug ? 'Edit Article' : 'Create New Article'}
+        {urlSlug ? 'Edit Article' : 'Create New Article'}
       </h1>
       
       <form onSubmit={handleSubmit} id="editArticleForm" className="space-y-6 pb-24">
         {/* Basic Information */}
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
+            <label htmlFor="title" className="block text-sm font-medium mb-1">Title</label>
             <input
               type="text"
+              id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full p-2 border rounded"
               required
             />
           </div>
-
+          <div>
+            <label htmlFor="slug" className="block text-sm font-medium mb-1">URL Slug</label>
+            <input
+              type="text"
+              id="slug"
+              value={customSlug}
+              onChange={(e) => {
+                setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'));
+                setSlugManuallyEdited(true);
+              }}
+              className="w-full p-2 border rounded"
+              required
+              placeholder="e.g., my-article-title"
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              This will be used in the URL. Use only lowercase letters, numbers, and hyphens.
+            </p>
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1">Subtitle</label>
             <input
