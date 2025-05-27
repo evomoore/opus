@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import './post-content.css';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
@@ -12,6 +13,25 @@ function sanitizeListParagraphs(html) {
     // Remove <p> tags directly inside <ul> or <ol>
     return `<${tag}>${inner.replace(/<p>([\s\S]*?)<\/p>/g, '$1')}</${tag}>`;
   });
+}
+
+function HeaderNav({ categories, currentCategory }) {
+  return (
+    <header className="w-full bg-gray-50 border-b mb-0">
+      <div className="flex items-center max-w-4xl mx-auto px-6 py-6 gap-6">
+        <Link href="/" className="flex items-center gap-5 group" aria-label="Mindsnack Books Home">
+          <Image
+            src="https://res.cloudinary.com/phonetag/image/upload/v1748312015/default-images/image-2025-05-27T00-11-02-599Z_yt3ssv.jpg"
+            alt="Mindsnack Books Logo"
+            width={90}
+            height={90}
+            className="rounded-full"
+          />
+          <span className="font-bold text-3xl tracking-tight text-gray-800 group-hover:text-blue-600 transition-colors select-none">Mindsnack Books</span>
+        </Link>
+      </div>
+    </header>
+  );
 }
 
 export default function PostPage({ params }) {
@@ -103,15 +123,7 @@ export default function PostPage({ params }) {
 
   return (
     <>
-      {/* Navigation Header with Logo */}
-      <header className="w-full bg-gray-50 border-b mb-0">
-        <div className="flex items-center max-w-4xl mx-auto px-6 py-3 gap-6">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group" aria-label="Mindsnack Books Home">
-            <span className="font-bold text-xl tracking-tight text-gray-800 group-hover:text-blue-600 transition-colors select-none">Mindsnack Books</span>
-          </Link>
-        </div>
-      </header>
+      <HeaderNav categories={categories} currentCategory={article?.categories?.[0]?.name || ''} />
       {/* Category Navigation Bar */}
       {categories.length > 0 && (
         <nav className="w-full bg-gray-50 border-b mb-2">
