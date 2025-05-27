@@ -272,15 +272,9 @@ export default function AdminDashboard() {
           <div className="flex gap-4">
             <button
               onClick={() => setIsCategoryModalOpen(true)}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Manage Categories
-            </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
               className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
             >
-              Import Articles
+              Manage Categories
             </button>
             <Link
               href="/admin/edit"
@@ -288,13 +282,6 @@ export default function AdminDashboard() {
             >
               Create New Article
             </Link>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              accept=".json"
-              className="hidden"
-            />
           </div>
         </div>
         <div className="mb-8 bg-white rounded-lg shadow p-6">
