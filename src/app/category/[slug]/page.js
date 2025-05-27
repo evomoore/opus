@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import ArticleCard from '@/components/ArticleCard';
 import { API_BASE_URL } from '@/lib/constants';
 
@@ -10,9 +11,16 @@ const ARTICLES_PER_PAGE = 15;
 function HeaderNav({ categories, currentCategory }) {
   return (
     <header className="w-full bg-gray-50 border-b mb-0">
-      <div className="flex items-center max-w-4xl mx-auto px-6 py-3 gap-6">
-        <Link href="/" className="flex items-center gap-3 group" aria-label="Mindsnack Books Home">
-          <span className="font-bold text-xl tracking-tight text-gray-800 group-hover:text-blue-600 transition-colors select-none">Mindsnack Books</span>
+      <div className="flex items-center max-w-4xl mx-auto px-6 py-6 gap-6">
+        <Link href="/" className="flex items-center gap-5 group" aria-label="Mindsnack Books Home">
+          <Image
+            src="https://res.cloudinary.com/phonetag/image/upload/v1748312015/default-images/image-2025-05-27T00-11-02-599Z_yt3ssv.jpg"
+            alt="Mindsnack Books Logo"
+            width={90}
+            height={90}
+            className="rounded-full"
+          />
+          <span className="font-bold text-3xl tracking-tight text-gray-800 group-hover:text-blue-600 transition-colors select-none">Mindsnack Books</span>
         </Link>
       </div>
     </header>

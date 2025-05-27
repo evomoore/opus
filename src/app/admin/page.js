@@ -266,24 +266,24 @@ export default function AdminDashboard() {
 
   return (
     <PasswordProtection>
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           <div className="flex gap-4">
-            <button
+          <button
               onClick={() => setIsCategoryModalOpen(true)}
               className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
             >
               Manage Categories
-            </button>
-            <Link
-              href="/admin/edit"
+          </button>
+          <Link
+            href="/admin/edit"
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Create New Article
-            </Link>
-          </div>
+          >
+            Create New Article
+          </Link>
         </div>
+      </div>
         <div className="mb-8 bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Note from the Editor</h2>
           <div className="mb-4">
@@ -308,40 +308,40 @@ export default function AdminDashboard() {
             </button>
           </div>
         </div>
-        <div className="mb-4 flex items-center gap-4">
-          <label className="font-medium">Filter by Category:</label>
-          <select
-            value={categoryFilter}
+      <div className="mb-4 flex items-center gap-4">
+        <label className="font-medium">Filter by Category:</label>
+        <select
+          value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="p-2 border rounded"
-          >
-            <option value="">All Categories</option>
-            {categories.map((cat) => (
+        >
+          <option value="">All Categories</option>
+          {categories.map((cat) => (
               <option key={cat._id || cat.slug} value={cat.slug}>
                 {cat.name}
               </option>
-            ))}
-          </select>
+          ))}
+        </select>
           <label className="font-medium">Sort by:</label>
-          <select
-            value={sortOrder}
+        <select
+          value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
             className="p-2 border rounded"
-          >
+        >
             <option value="alpha">Alphabetical</option>
             <option value="date">Publication Date</option>
-          </select>
-        </div>
-        {selectedSlugs.length > 0 && (
-          <button
-            type="button"
-            className="mb-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
-            onClick={handleDeleteSelected}
-          >
-            Delete Selected ({selectedSlugs.length})
-          </button>
-        )}
-        {importing && <div className="text-blue-500 mb-2">Importing article...</div>}
+        </select>
+      </div>
+      {selectedSlugs.length > 0 && (
+        <button
+          type="button"
+          className="mb-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+          onClick={handleDeleteSelected}
+        >
+          Delete Selected ({selectedSlugs.length})
+        </button>
+      )}
+      {importing && <div className="text-blue-500 mb-2">Importing article...</div>}
         {importError && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-600">
             {importError}
@@ -363,30 +363,30 @@ export default function AdminDashboard() {
             <thead>
               <tr className="bg-gray-50">
                 <th className="p-2 text-left w-8">
-                  <input
-                    type="checkbox"
+                <input
+                  type="checkbox"
                     checked={selectedSlugs.length === articles.length}
-                    onChange={handleSelectAll}
+                  onChange={handleSelectAll}
                     className="mr-2"
-                  />
-                </th>
+                />
+              </th>
                 <th className="p-2 text-left w-1/4">Title</th>
                 <th className="p-2 text-left w-1/5">Category</th>
                 <th className="p-2 text-left w-24">Status</th>
                 <th className="p-2 text-left w-32">Date</th>
                 <th className="p-2 text-left w-48">Actions</th>
-              </tr>
-            </thead>
+            </tr>
+          </thead>
             <tbody>
-              {paginatedArticles.map((article) => (
+            {paginatedArticles.map((article) => (
                 <tr key={article.slug} className="border-b hover:bg-gray-50">
                   <td className="p-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedSlugs.includes(article.slug)}
-                      onChange={() => handleSelect(article.slug)}
-                    />
-                  </td>
+                  <input
+                    type="checkbox"
+                    checked={selectedSlugs.includes(article.slug)}
+                    onChange={() => handleSelect(article.slug)}
+                  />
+                </td>
                   <td className="p-2">
                     <div className="truncate max-w-[300px]" title={article.title}>
                       <Link
@@ -395,8 +395,8 @@ export default function AdminDashboard() {
                       >
                         {article.title}
                       </Link>
-                    </div>
-                  </td>
+                  </div>
+                </td>
                   <td className="p-2">
                     {Array.isArray(article.categories)
                       ? article.categories
@@ -417,62 +417,62 @@ export default function AdminDashboard() {
                     {article.meta?.publication_date
                       ? new Date(article.meta.publication_date).toLocaleDateString()
                       : 'No date'}
-                  </td>
+                </td>
                   <td className="p-2">
-                    <div className="flex gap-4 items-center">
-                      <Link
-                        href={`/admin/edit?slug=${article.slug}`}
+                  <div className="flex gap-4 items-center">
+                    <Link
+                      href={`/admin/edit?slug=${article.slug}`}
                         className="text-blue-600 hover:text-blue-800"
-                      >
-                        Edit
-                      </Link>
-                      <Link
-                        href={`/post/${article.slug}`}
+                    >
+                      Edit
+                    </Link>
+                    <Link
+                      href={`/post/${article.slug}`}
                         className="text-green-600 hover:text-green-800"
-                        target="_blank"
-                      >
-                        View
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(article.slug)}
+                      target="_blank"
+                    >
+                      View
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(article.slug)}
                         className="text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <button
+            className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </button>
+          <span className="mx-2">Page {currentPage} of {totalPages}</span>
+          <button
+            className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </button>
         </div>
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-6">
-            <button
-              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </button>
-            <span className="mx-2">Page {currentPage} of {totalPages}</span>
-            <button
-              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </button>
-          </div>
-        )}
+      )}
 
         {/* Category Management Modal */}
         <CategoryManagementModal
           isOpen={isCategoryModalOpen}
           onClose={() => setIsCategoryModalOpen(false)}
         />
-      </div>
+    </div>
     </PasswordProtection>
   );
 } 
