@@ -306,8 +306,8 @@ export default function AdminDashboard() {
             >
               {isSavingNote ? 'Saving...' : 'Save Note'}
             </button>
-          </div>
         </div>
+      </div>
       <div className="mb-4 flex items-center gap-4">
         <label className="font-medium">Filter by Category:</label>
         <select
