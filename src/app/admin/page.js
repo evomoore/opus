@@ -400,7 +400,11 @@ export default function AdminDashboard() {
                   <td className="p-2">
                     {Array.isArray(article.categories)
                       ? article.categories
-                          .map((cat) => (typeof cat === 'object' ? cat.name : cat))
+                          .map((cat) => {
+                            if (typeof cat === 'object') return cat.name;
+                            const foundCat = categories.find(c => c.slug === cat);
+                            return foundCat ? foundCat.name : cat;
+                          })
                           .join(', ')
                       : article.categories}
                   </td>

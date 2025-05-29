@@ -66,24 +66,24 @@ export default function CategoryPage({ params }) {
           throw new Error('Failed to fetch category');
         }
         const categoryData = await categoryResponse.json();
-        console.log('Category data:', categoryData);
         setCategoryName(categoryData.name);
         setCategoryDefaultImage(categoryData.defaultImage?.url);
 
-        // Fetch articles for this category (no pagination on API)
-        const articlesResponse = await fetch(
-          `${API_BASE_URL}/articles?category=${encodeURIComponent(categoryData.name)}`
+        // Fetch articles for this category by both slug and name
+        const [bySlugRes, byNameRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/articles?category=${encodeURIComponent(categoryData.slug)}`),
+          fetch(`${API_BASE_URL}/articles?category=${encodeURIComponent(categoryData.name)}`)
+        ]);
+        const bySlug = bySlugRes.ok ? await bySlugRes.json() : [];
+        const byName = byNameRes.ok ? await byNameRes.json() : [];
+
+        // Filter out draft articles and combine/deduplicate
+        const allArticles = [...bySlug, ...byName].filter(article => article.meta?.status !== 'draft');
+        const uniqueArticles = Array.from(
+          new Map(allArticles.map(a => [a._id || a.slug, a])).values()
         );
-        if (!articlesResponse.ok) {
-          console.error('Articles fetch failed:', await articlesResponse.text());
-          throw new Error('Failed to fetch articles');
-        }
-        const data = await articlesResponse.json();
-        // Filter out draft articles
-        const allArticles = Array.isArray(data) ? data.filter(article => article.meta?.status !== 'draft') : [];
-        console.log('Fetched articles:', allArticles.length);
-        setArticles(allArticles);
-        setTotalPages(Math.ceil(allArticles.length / ARTICLES_PER_PAGE));
+        setArticles(uniqueArticles);
+        setTotalPages(Math.ceil(uniqueArticles.length / ARTICLES_PER_PAGE));
       } catch (err) {
         console.error('Error in fetchCategoryAndArticles:', err);
         setError(err.message);
@@ -251,6 +251,7 @@ export default function CategoryPage({ params }) {
                 key={article.slug}
                 article={article}
                 categoryDefaultImage={categoryDefaultImage}
+                categoryName={categoryName}
               />
             ))}
           </div>

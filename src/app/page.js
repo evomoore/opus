@@ -84,18 +84,25 @@ export default function HomePage() {
 
   // Fetch latest articles for each section
   useEffect(() => {
-    const fetchSectionArticles = async (category) => {
+    const fetchSectionArticles = async (categoryName, categorySlug) => {
       try {
-        const res = await fetch(`${API_BASE_URL}/articles?category=${encodeURIComponent(category)}&limit=6`);
-        if (!res.ok) throw new Error(`Failed to fetch ${category} articles`);
-        const data = await res.json();
-        const articles = Array.isArray(data) ? data : [];
-        // Filter out draft articles and ensure we only get 6 articles
-        return articles
-          .filter(article => article.meta?.status !== 'draft')
-          .slice(0, 6);
+        // Fetch by both slug and name
+        const [bySlugRes, byNameRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/articles?category=${encodeURIComponent(categorySlug)}`),
+          fetch(`${API_BASE_URL}/articles?category=${encodeURIComponent(categoryName)}`)
+        ]);
+        const bySlug = bySlugRes.ok ? await bySlugRes.json() : [];
+        const byName = byNameRes.ok ? await byNameRes.json() : [];
+        // Combine, deduplicate, filter drafts
+        const allArticles = [...bySlug, ...byName].filter(article => article.meta?.status !== 'draft');
+        const uniqueArticles = Array.from(
+          new Map(allArticles.map(a => [a._id || a.slug, a])).values()
+        );
+        // Sort by publication date, newest first
+        uniqueArticles.sort((a, b) => new Date(b.meta?.publication_date) - new Date(a.meta?.publication_date));
+        return uniqueArticles.slice(0, 6);
       } catch (err) {
-        console.error(`Error fetching ${category} articles:`, err);
+        console.error(`Error fetching ${categoryName} articles:`, err);
         return [];
       }
     };
@@ -105,11 +112,11 @@ export default function HomePage() {
       setError(null);
       try {
         const [bookReviews, movieReviews, humor, mad, snacks] = await Promise.all([
-          fetchSectionArticles('Book Reviews'),
-          fetchSectionArticles('Movie Reviews'),
-          fetchSectionArticles('Humor'),
-          fetchSectionArticles('Mad'),
-          fetchSectionArticles('Snacks')
+          fetchSectionArticles('Book Reviews', 'book-reviews'),
+          fetchSectionArticles('Movie Reviews', 'movie-reviews'),
+          fetchSectionArticles('Humor', 'humor'),
+          fetchSectionArticles('Mad', 'mad'),
+          fetchSectionArticles('Snacks', 'snacks')
         ]);
 
         setSections({
@@ -142,13 +149,23 @@ export default function HomePage() {
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {articles.map((article) => (
-            <ArticleCard
-              key={article.slug}
-              article={article}
-              categoryDefaultImage={categoryDefaultImages[categorySlug]}
-            />
-          ))}
+          {articles.map((article) => {
+            // Find the category name for this article (first category)
+            let catName = '';
+            if (article.categories && article.categories[0]) {
+              const catSlug = typeof article.categories[0] === 'object' ? article.categories[0].slug : article.categories[0];
+              const foundCat = categories.find(c => c.slug === catSlug);
+              catName = foundCat ? foundCat.name : catSlug;
+            }
+            return (
+              <ArticleCard
+                key={article.slug}
+                article={article}
+                categoryDefaultImage={categoryDefaultImages[categorySlug]}
+                categoryName={catName}
+              />
+            );
+          })}
         </div>
       </section>
     );
