@@ -3,7 +3,7 @@ import Image from 'next/image';
 
 const DEFAULT_IMAGE = 'https://res.cloudinary.com/phonetag/image/upload/v1747421822/default-images/hlu8cde20ntizfjq0tbn.png';
 
-export default function ArticleCard({ article, categoryDefaultImage }) {
+export default function ArticleCard({ article, categoryDefaultImage, categoryName }) {
   const {
     title,
     subtitle,
@@ -20,6 +20,9 @@ export default function ArticleCard({ article, categoryDefaultImage }) {
     day: 'numeric'
   }) : '';
 
+  // Use the passed categoryName prop if available, otherwise fallback to categories[0]
+  const displayCategory = categoryName || categories?.[0];
+
   return (
     <article className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <Link href={`/post/${slug}`} className="block">
@@ -33,9 +36,9 @@ export default function ArticleCard({ article, categoryDefaultImage }) {
           />
         </div>
         <div className="p-6">
-          {categories?.[0] && (
+          {displayCategory && (
             <span className="inline-block bg-blue-100 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full mb-2">
-              {categories[0]}
+              {displayCategory}
             </span>
           )}
           <h2 className="text-xl font-bold mb-2 line-clamp-2">{title}</h2>
