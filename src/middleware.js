@@ -8,7 +8,7 @@ export function middleware(request) {
     'Content-Security-Policy',
     `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com;
       style-src 'self' 'unsafe-inline';
       img-src 'self' data: https:;
       font-src 'self';
@@ -18,7 +18,7 @@ export function middleware(request) {
       frame-ancestors 'none';
       block-all-mixed-content;
       upgrade-insecure-requests;
-      connect-src 'self' https://snackmachine.onrender.com https://snackmachine-staging.onrender.com https://api.cloudinary.com;
+      connect-src 'self' https://snackmachine.onrender.com https://snackmachine-staging.onrender.com https://api.cloudinary.com https://www.google-analytics.com;
     `.replace(/\s+/g, ' ').trim()
   );
 
