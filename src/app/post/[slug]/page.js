@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import './post-content.css';
+import Script from 'next/script';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
 
@@ -121,8 +122,27 @@ export default function PostPage({ params }) {
     );
   }
 
+  const SITE_URL = 'https://mindsnackbooks.com'; // Update to your production URL
+  const canonicalUrl = `${SITE_URL}/post/${article.slug}`;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": article.title,
+    "description": article.subtitle || '',
+    "author": article.meta?.author,
+    "datePublished": article.meta?.publication_date,
+    "image": article.media?.featured_image?.url,
+    "mainEntityOfPage": canonicalUrl,
+  };
+
   return (
     <>
+      {/* Canonical link */}
+      <link rel="canonical" href={canonicalUrl} />
+      {/* JSON-LD structured data */}
+      <Script type="application/ld+json" id="ld-json-article">
+        {JSON.stringify(jsonLd)}
+      </Script>
       <HeaderNav categories={categories} currentCategory={article?.categories?.[0]?.name || ''} />
       {/* Category Navigation Bar */}
       {categories.length > 0 && (
