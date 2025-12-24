@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import ArticleCard from '@/components/ArticleCard';
-import { API_BASE_URL } from '@/lib/constants';
+import { CACHED_API_BASE_URL } from '@/lib/constants';
+
+const API_BASE_URL = CACHED_API_BASE_URL;
 
 const ARTICLES_PER_PAGE = 15;
 

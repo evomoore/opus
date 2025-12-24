@@ -4,8 +4,12 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import PasswordProtection from '@/components/PasswordProtection';
 import CategoryManagementModal from '@/components/CategoryManagementModal';
+import { API_BASE_URL, CACHED_API_BASE_URL } from '@/lib/constants';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
+// Use direct API for admin operations (POST, PUT, DELETE)
+const DIRECT_API_URL = API_BASE_URL;
+// Use cached API for reads
+const READ_API_URL = CACHED_API_BASE_URL;
 
 export default function AdminDashboard() {
   const [articles, setArticles] = useState([]);
@@ -31,7 +35,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchArticles = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/articles`);
+        const response = await fetch(`${READ_API_URL}/articles`);
         if (!response.ok) {
           throw new Error('Failed to fetch articles');
         }
@@ -53,7 +57,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/categories`);
+        const res = await fetch(`${READ_API_URL}/categories`);
         if (!res.ok) throw new Error('Failed to fetch categories');
         const data = await res.json();
         setCategories(Array.isArray(data) ? data : data.categories || []);
@@ -68,7 +72,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchEditorNote = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/editor-notes`);
+        const res = await fetch(`${READ_API_URL}/editor-notes`);
         if (!res.ok) throw new Error('Failed to fetch editor note');
         const data = await res.json();
         // The API returns an array of notes, we want the first one
@@ -103,7 +107,7 @@ export default function AdminDashboard() {
     for (const slug of selectedSlugs) {
       try {
         console.log('Attempting to delete article:', slug);
-        const res = await fetch(`${API_BASE_URL}/articles/${slug}`, { 
+        const res = await fetch(`${DIRECT_API_URL}/articles/${slug}`, { 
           method: 'DELETE',
           headers: {
             'Accept': 'application/json',
@@ -114,6 +118,21 @@ export default function AdminDashboard() {
           const errorData = await res.json().catch(() => ({}));
           console.error('Delete failed:', errorData);
           anyError = true;
+        } else {
+          // Trigger cache revalidation after successful delete
+          try {
+            const revalidateSecret = process.env.NEXT_PUBLIC_REVALIDATE_SECRET || 'your-secret-token-here';
+            await fetch('/api/cache/revalidate', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${revalidateSecret}`,
+              },
+              body: JSON.stringify({ type: 'all' }),
+            });
+          } catch (revalidateError) {
+            console.error('Error revalidating cache:', revalidateError);
+          }
         }
       } catch (err) {
         console.error('Delete error:', err);
@@ -131,7 +150,7 @@ export default function AdminDashboard() {
     if (!window.confirm('Are you sure you want to delete this article?')) return;
     try {
       console.log('Attempting to delete article:', slug);
-      const res = await fetch(`${API_BASE_URL}/articles/${slug}`, { 
+      const res = await fetch(`${DIRECT_API_URL}/articles/${slug}`, { 
         method: 'DELETE',
         headers: {
           'Accept': 'application/json',
@@ -142,6 +161,20 @@ export default function AdminDashboard() {
         const errorData = await res.json().catch(() => ({}));
         console.error('Delete failed:', errorData);
         throw new Error(errorData.message || 'Failed to delete article');
+      }
+      // Trigger cache revalidation after successful delete
+      try {
+        const revalidateSecret = process.env.NEXT_PUBLIC_REVALIDATE_SECRET || 'your-secret-token-here';
+        await fetch('/api/cache/revalidate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${revalidateSecret}`,
+          },
+          body: JSON.stringify({ type: 'all' }),
+        });
+      } catch (revalidateError) {
+        console.error('Error revalidating cache:', revalidateError);
       }
       setArticles((prev) => prev.filter((a) => a.slug !== slug));
       setSelectedSlugs((prev) => prev.filter((s) => s !== slug));
@@ -157,12 +190,26 @@ export default function AdminDashboard() {
     setNoteError(null);
     setNoteSuccess(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/editor-notes`, {
+      const res = await fetch(`${DIRECT_API_URL}/editor-notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: editorNote }),
       });
       if (!res.ok) throw new Error('Failed to save editor note');
+      // Trigger cache revalidation after saving editor note
+      try {
+        const revalidateSecret = process.env.NEXT_PUBLIC_REVALIDATE_SECRET || 'your-secret-token-here';
+        await fetch('/api/cache/revalidate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${revalidateSecret}`,
+          },
+          body: JSON.stringify({ type: 'editor-note' }),
+        });
+      } catch (revalidateError) {
+        console.error('Error revalidating cache:', revalidateError);
+      }
       setNoteSuccess('Editor note saved successfully!');
     } catch (err) {
       setNoteError(err.message || 'Failed to save editor note');
@@ -221,7 +268,7 @@ export default function AdminDashboard() {
       const data = JSON.parse(text);
       if (!data.article) throw new Error('JSON must have an "article" property');
       
-      const res = await fetch(`${API_BASE_URL}/articles`, {
+      const res = await fetch(`${DIRECT_API_URL}/articles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ article: data.article }),
@@ -230,6 +277,25 @@ export default function AdminDashboard() {
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.message || 'Failed to import article');
+      }
+      
+      // Trigger cache revalidation after importing article
+      try {
+        const revalidateSecret = process.env.NEXT_PUBLIC_REVALIDATE_SECRET || 'your-secret-token-here';
+        await fetch('/api/cache/revalidate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${revalidateSecret}`,
+          },
+          body: JSON.stringify({ 
+            type: 'article',
+            slug: data.article.slug,
+            category: data.article.categories?.[0],
+          }),
+        });
+      } catch (revalidateError) {
+        console.error('Error revalidating cache:', revalidateError);
       }
       
       setImportSuccess('Article imported successfully!');

@@ -53,8 +53,13 @@ function sanitizeListParagraphs(html) {
   });
 }
 
-// Ensure the API URL is properly constructed
-const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
+// Import API URLs - use direct API for writes, cached for reads
+import { API_BASE_URL, CACHED_API_BASE_URL } from '@/lib/constants';
+
+// Use direct API for admin operations (POST, PUT, DELETE)
+const DIRECT_API_URL = API_BASE_URL;
+// Use cached API for reads
+const READ_API_URL = CACHED_API_BASE_URL;
 
 function EditArticleContent() {
   const searchParams = useSearchParams();
@@ -136,7 +141,7 @@ function EditArticleContent() {
       setError(null);
       
       try {
-        const url = `${API_BASE_URL}/articles/${urlSlug}`;
+        const url = `${READ_API_URL}/articles/${urlSlug}`;
         console.log('Fetching article from:', url);
         
         const response = await fetch(url);
@@ -189,7 +194,7 @@ function EditArticleContent() {
       setCategoriesLoading(true);
       setCategoriesError(null);
       try {
-        const res = await fetch(`${API_BASE_URL}/categories`);
+        const res = await fetch(`${READ_API_URL}/categories`);
         if (!res.ok) throw new Error('Failed to fetch categories');
         const data = await res.json();
         setCategories(Array.isArray(data) ? data : data.categories || []);
@@ -252,7 +257,7 @@ function EditArticleContent() {
         }
       };
 
-      const url = `${API_BASE_URL}/articles${urlSlug ? `/${urlSlug}` : ''}`;
+      const url = `${DIRECT_API_URL}/articles${urlSlug ? `/${urlSlug}` : ''}`;
       console.log('Submitting article to:', url);
       
       const response = await fetch(url, {
@@ -296,6 +301,37 @@ function EditArticleContent() {
       }
 
       const result = await response.json();
+      
+      // Trigger cache revalidation after successful save
+      try {
+        const revalidateSecret = process.env.NEXT_PUBLIC_REVALIDATE_SECRET || 'your-secret-token-here';
+        const slugToInvalidate = customSlug || urlSlug || result.slug;
+        console.log('Triggering cache invalidation for article:', slugToInvalidate);
+        
+        const revalidateResponse = await fetch('/api/cache/revalidate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${revalidateSecret}`,
+          },
+          body: JSON.stringify({
+            type: 'article',
+            slug: slugToInvalidate,
+            category: selectedCategory,
+          }),
+        });
+        
+        if (!revalidateResponse.ok) {
+          const errorData = await revalidateResponse.json().catch(() => ({}));
+          console.error('Cache revalidation failed:', revalidateResponse.status, errorData);
+        } else {
+          const revalidateData = await revalidateResponse.json();
+          console.log('Cache revalidation successful:', revalidateData);
+        }
+      } catch (revalidateError) {
+        console.error('Error revalidating cache:', revalidateError);
+        // Don't fail the save if revalidation fails
+      }
       
       if (!urlSlug) {
         // After creating a new article, redirect to edit page with the new slug

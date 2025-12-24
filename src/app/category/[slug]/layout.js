@@ -1,8 +1,11 @@
 export async function generateMetadata({ params }) {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
+  const CACHED_API_BASE_URL = '/api/cached';
   
   try {
-    const response = await fetch(`${API_BASE_URL}/categories/${params.slug}`);
+    // Fetch category by slug - the cached route handles slug as a query parameter
+    const response = await fetch(`${CACHED_API_BASE_URL}/categories?slug=${params.slug}`, {
+      next: { revalidate: 86400 }, // 24 hours
+    });
     if (!response.ok) {
       return {
         title: 'Mind Snack Books',
