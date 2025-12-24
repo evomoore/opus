@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { API_BASE_URL } from '@/lib/constants';
+import { API_BASE_URL, CACHED_API_BASE_URL } from '@/lib/constants';
+
+// Use direct API for admin operations (POST, PUT, DELETE)
+const DIRECT_API_URL = API_BASE_URL;
+// Use cached API for reads
+const READ_API_URL = CACHED_API_BASE_URL;
 
 const DEFAULT_IMAGE = 'https://res.cloudinary.com/phonetag/image/upload/v1747421822/default-images/hlu8cde20ntizfjq0tbn.png';
 
@@ -22,7 +27,7 @@ export default function CategoryManagementModal({ isOpen, onClose }) {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/categories`);
+      const response = await fetch(`${READ_API_URL}/categories`);
       if (!response.ok) throw new Error('Failed to fetch categories');
       const data = await response.json();
       setCategories(Array.isArray(data) ? data : data.categories || []);
@@ -106,7 +111,7 @@ export default function CategoryManagementModal({ isOpen, onClose }) {
       });
 
       // Update category with new image URL using PUT request
-      const response = await fetch(`${API_BASE_URL}/categories/${categorySlug}`, {
+      const response = await fetch(`${DIRECT_API_URL}/categories/${categorySlug}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -145,6 +150,21 @@ export default function CategoryManagementModal({ isOpen, onClose }) {
         }
       }
       
+      // Trigger cache revalidation
+      try {
+        const revalidateSecret = process.env.NEXT_PUBLIC_REVALIDATE_SECRET || 'your-secret-token-here';
+        await fetch('/api/cache/revalidate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${revalidateSecret}`,
+          },
+          body: JSON.stringify({ type: 'category' }),
+        });
+      } catch (revalidateError) {
+        console.error('Error revalidating cache:', revalidateError);
+      }
+      
       setSuccess('Image uploaded successfully');
       fetchCategories();
     } catch (err) {
@@ -170,7 +190,7 @@ export default function CategoryManagementModal({ isOpen, onClose }) {
         throw new Error('Category not found');
       }
 
-      const response = await fetch(`${API_BASE_URL}/categories/${category.slug}`, {
+      const response = await fetch(`${DIRECT_API_URL}/categories/${category.slug}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -188,6 +208,21 @@ export default function CategoryManagementModal({ isOpen, onClose }) {
         throw new Error(`Failed to remove image: ${errorText}`);
       }
       
+      // Trigger cache revalidation
+      try {
+        const revalidateSecret = process.env.NEXT_PUBLIC_REVALIDATE_SECRET || 'your-secret-token-here';
+        await fetch('/api/cache/revalidate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${revalidateSecret}`,
+          },
+          body: JSON.stringify({ type: 'category' }),
+        });
+      } catch (revalidateError) {
+        console.error('Error revalidating cache:', revalidateError);
+      }
+      
       setSuccess('Image removed successfully');
       fetchCategories();
     } catch (err) {
@@ -201,13 +236,28 @@ export default function CategoryManagementModal({ isOpen, onClose }) {
     setSuccess(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/categories`, {
+      const response = await fetch(`${DIRECT_API_URL}/categories`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newCategory),
       });
 
       if (!response.ok) throw new Error('Failed to add category');
+      
+      // Trigger cache revalidation
+      try {
+        const revalidateSecret = process.env.NEXT_PUBLIC_REVALIDATE_SECRET || 'your-secret-token-here';
+        await fetch('/api/cache/revalidate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${revalidateSecret}`,
+          },
+          body: JSON.stringify({ type: 'category' }),
+        });
+      } catch (revalidateError) {
+        console.error('Error revalidating cache:', revalidateError);
+      }
       
       setSuccess('Category added successfully');
       setNewCategory({ name: '', slug: '' });
@@ -223,13 +273,28 @@ export default function CategoryManagementModal({ isOpen, onClose }) {
     setSuccess(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/categories/${editingCategory._id}`, {
+      const response = await fetch(`${DIRECT_API_URL}/categories/${editingCategory._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingCategory),
       });
 
       if (!response.ok) throw new Error('Failed to update category');
+      
+      // Trigger cache revalidation
+      try {
+        const revalidateSecret = process.env.NEXT_PUBLIC_REVALIDATE_SECRET || 'your-secret-token-here';
+        await fetch('/api/cache/revalidate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${revalidateSecret}`,
+          },
+          body: JSON.stringify({ type: 'category' }),
+        });
+      } catch (revalidateError) {
+        console.error('Error revalidating cache:', revalidateError);
+      }
       
       setSuccess('Category updated successfully');
       setEditingCategory(null);
@@ -254,13 +319,28 @@ export default function CategoryManagementModal({ isOpen, onClose }) {
         throw new Error('Category not found');
       }
 
-      const response = await fetch(`${API_BASE_URL}/categories/${category.slug}`, {
+      const response = await fetch(`${DIRECT_API_URL}/categories/${category.slug}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Failed to delete category: ${errorText}`);
+      }
+      
+      // Trigger cache revalidation
+      try {
+        const revalidateSecret = process.env.NEXT_PUBLIC_REVALIDATE_SECRET || 'your-secret-token-here';
+        await fetch('/api/cache/revalidate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${revalidateSecret}`,
+          },
+          body: JSON.stringify({ type: 'category' }),
+        });
+      } catch (revalidateError) {
+        console.error('Error revalidating cache:', revalidateError);
       }
       
       setSuccess('Category deleted successfully');

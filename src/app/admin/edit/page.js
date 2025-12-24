@@ -53,8 +53,14 @@ function sanitizeListParagraphs(html) {
   });
 }
 
-// Ensure the API URL is properly constructed
-const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
+// Import API URLs - use direct API for all admin operations to ensure fresh data
+import { API_BASE_URL, CACHED_API_BASE_URL } from '@/lib/constants';
+
+// Use direct API for all admin operations (GET, POST, PUT, DELETE)
+// Admin should always see the latest data, not cached data
+const DIRECT_API_URL = API_BASE_URL;
+// Keep cached API reference for potential future use, but admin uses direct API
+const READ_API_URL = API_BASE_URL; // Changed: Admin reads should also use direct API
 
 function EditArticleContent() {
   const searchParams = useSearchParams();
@@ -136,10 +142,13 @@ function EditArticleContent() {
       setError(null);
       
       try {
-        const url = `${API_BASE_URL}/articles/${urlSlug}`;
+        // Use direct API with cache-busting to ensure fresh data in admin
+        const url = `${READ_API_URL}/articles/${urlSlug}?_t=${Date.now()}`;
         console.log('Fetching article from:', url);
         
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          cache: 'no-store', // Ensure we don't get cached responses
+        });
         
         if (!response.ok) {
           throw new Error(`Failed to fetch article: ${response.statusText}`);
@@ -189,7 +198,7 @@ function EditArticleContent() {
       setCategoriesLoading(true);
       setCategoriesError(null);
       try {
-        const res = await fetch(`${API_BASE_URL}/categories`);
+        const res = await fetch(`${READ_API_URL}/categories`);
         if (!res.ok) throw new Error('Failed to fetch categories');
         const data = await res.json();
         setCategories(Array.isArray(data) ? data : data.categories || []);
@@ -252,7 +261,7 @@ function EditArticleContent() {
         }
       };
 
-      const url = `${API_BASE_URL}/articles${urlSlug ? `/${urlSlug}` : ''}`;
+      const url = `${DIRECT_API_URL}/articles${urlSlug ? `/${urlSlug}` : ''}`;
       console.log('Submitting article to:', url);
       
       const response = await fetch(url, {
@@ -297,6 +306,37 @@ function EditArticleContent() {
 
       const result = await response.json();
       
+      // Trigger cache revalidation after successful save
+      try {
+        const revalidateSecret = process.env.NEXT_PUBLIC_REVALIDATE_SECRET || 'your-secret-token-here';
+        const slugToInvalidate = customSlug || urlSlug || result.slug;
+        console.log('Triggering cache invalidation for article:', slugToInvalidate);
+        
+        const revalidateResponse = await fetch('/api/cache/revalidate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${revalidateSecret}`,
+          },
+          body: JSON.stringify({
+            type: 'article',
+            slug: slugToInvalidate,
+            category: selectedCategory,
+          }),
+        });
+        
+        if (!revalidateResponse.ok) {
+          const errorData = await revalidateResponse.json().catch(() => ({}));
+          console.error('Cache revalidation failed:', revalidateResponse.status, errorData);
+        } else {
+          const revalidateData = await revalidateResponse.json();
+          console.log('Cache revalidation successful:', revalidateData);
+        }
+      } catch (revalidateError) {
+        console.error('Error revalidating cache:', revalidateError);
+        // Don't fail the save if revalidation fails
+      }
+      
       if (!urlSlug) {
         // After creating a new article, redirect to edit page with the new slug
         router.push(`/admin/edit?slug=${result.slug}`);
@@ -305,7 +345,23 @@ function EditArticleContent() {
         if (result.slug && result.slug !== urlSlug) {
           router.push(`/admin/edit?slug=${result.slug}`);
         } else {
-          // For existing articles, just show success message
+          // For existing articles, refresh the article data from server to ensure we have the latest
+          // This prevents stale cached data from being displayed
+          try {
+            const refreshUrl = `${READ_API_URL}/articles/${customSlug || urlSlug}?_t=${Date.now()}`;
+            const refreshResponse = await fetch(refreshUrl, { cache: 'no-store' });
+            if (refreshResponse.ok) {
+              const refreshedArticle = await refreshResponse.json();
+              // Update form with fresh data from server
+              setTitle(refreshedArticle.title ?? title);
+              setSubtitle(refreshedArticle.subtitle ?? subtitle);
+              if (editor && refreshedArticle.content) {
+                editor.commands.setContent(refreshedArticle.content);
+              }
+            }
+          } catch (refreshError) {
+            console.warn('Failed to refresh article after save:', refreshError);
+          }
           alert('Article updated successfully!');
         }
       }

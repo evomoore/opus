@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import ArticleCard from '@/components/ArticleCard';
+import { CACHED_API_BASE_URL } from '@/lib/constants';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || "https://snackmachine.onrender.com/api";
+const API_BASE_URL = CACHED_API_BASE_URL;
 const ARTICLES_PER_SECTION = 6;
 
 function HeaderNav({ categories, currentCategory }) {

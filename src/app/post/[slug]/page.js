@@ -5,8 +5,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import './post-content.css';
 import Script from 'next/script';
+import { CACHED_API_BASE_URL } from '@/lib/constants';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
+const API_BASE_URL = CACHED_API_BASE_URL;
 
 // Sanitize function to remove <p> tags directly inside <ul> or <ol>
 function sanitizeListParagraphs(html) {

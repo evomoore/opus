@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import ArticleCard from '@/components/ArticleCard';
-import { API_BASE_URL } from '@/lib/constants';
+import { CACHED_API_BASE_URL } from '@/lib/constants';
+
+const API_BASE_URL = CACHED_API_BASE_URL;
 
 const ARTICLES_PER_PAGE = 15;
 
@@ -60,7 +62,8 @@ export default function CategoryPage({ params }) {
       setError(null);
       try {
         // First fetch the category to get its name and default image
-        const categoryResponse = await fetch(`${API_BASE_URL}/categories/${params.slug}`);
+        // The cached API route uses query parameter, not path parameter
+        const categoryResponse = await fetch(`${API_BASE_URL}/categories?slug=${encodeURIComponent(params.slug)}`);
         if (!categoryResponse.ok) {
           console.error('Category fetch failed:', await categoryResponse.text());
           throw new Error('Failed to fetch category');
