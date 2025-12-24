@@ -62,7 +62,8 @@ export default function CategoryPage({ params }) {
       setError(null);
       try {
         // First fetch the category to get its name and default image
-        const categoryResponse = await fetch(`${API_BASE_URL}/categories/${params.slug}`);
+        // The cached API route uses query parameter, not path parameter
+        const categoryResponse = await fetch(`${API_BASE_URL}/categories?slug=${encodeURIComponent(params.slug)}`);
         if (!categoryResponse.ok) {
           console.error('Category fetch failed:', await categoryResponse.text());
           throw new Error('Failed to fetch category');
