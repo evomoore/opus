@@ -3,9 +3,12 @@ import { getCacheKey, isCacheValid, get, set } from '@/lib/cache';
 
 const EXTERNAL_API_URL = process.env.NEXT_PUBLIC_ARTICLES_API_URL || 'https://snackmachine.onrender.com/api';
 
+// Mark as dynamic to allow search params
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = request.nextUrl;
     const category = searchParams.get('category');
     
     let url = `${EXTERNAL_API_URL}/articles`;
